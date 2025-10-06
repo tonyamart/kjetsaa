@@ -1,0 +1,576 @@
+---
+title: "02_keywords"
+format: html
+editor: visual
+---
+
+## Keywords analysis
+
+## Load data & pckg
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(tidylo)
+library(stylo)
+
+library(MetBrewer)
+theme_set(theme_minimal())
+```
+
+```{r}
+# corpus with all words from RNC by 20 authors
+corpus <- read.csv("../data/20authors_all_lemmatized.csv") %>% select(-X)
+
+glimpse(corpus)
+```
+
+```{r}
+norm <- read.csv("../data/kjetsaa_norm_lemmatized.csv")
+glimpse(norm)
+```
+
+## I. small corpus replication
+
+```{r}
+lerm_poems <- corpus %>% 
+  filter(author == "М. Ю. Лермонтов") %>% 
+  select(header) %>% 
+  distinct() %>% 
+  sample_n(150) %>% 
+  pull()
+
+# select lermontov bigger sample
+lerm <- corpus %>% 
+  filter(author == "М. Ю. Лермонтов") %>% 
+  # filter selected 300 poems
+  filter(header %in% lerm_poems) %>% 
+  
+  mutate(pos = str_extract(analysis, "gr': '.*?,"),
+         pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+  select(id, author, header, lemma, pos) %>% 
+  
+  # NB sample 43000 words! to make it similar to original selection
+  # sample_n(43000) %>% 
+  mutate(corpus = "lerm")
+
+glimpse(lerm)
+```
+
+Prepare 'norm' corpus for comparison
+
+```{r}
+norm <- norm %>% 
+  mutate(pos = str_extract(analysis, "gr': '.*?,"),
+         pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+  select(id, author, header, lemma, pos) %>% 
+  mutate(corpus = "norm")
+
+glimpse(norm)
+```
+
+```{r}
+colnames(lerm) == colnames(norm)
+
+lerm_norm <- rbind(lerm, norm)
+```
+
+### base adj freq
+
+MF adj in Lerm & in norm
+
+```{r}
+x <- lerm %>% 
+  filter(pos == "A") %>% nrow() # number of adjectives
+
+lerm %>% 
+  filter(pos == "A") %>% 
+  count(lemma, sort = T) %>% 
+  mutate(perc = round(n/x * 100, 2 ))
+```
+
+```{r}
+x <- norm %>% 
+  filter(pos == "A") %>% nrow() # number of adjectives
+
+norm %>% 
+  filter(pos == "A") %>% 
+  count(lemma, sort = T) %>% 
+  mutate(perc = round(n/x * 100, 2 ))
+```
+
+```{r}
+lerm %>% select(header) %>% distinct()
+norm %>% select(header) %>% distinct()
+```
+
+### Giuraud coeff
+
+```{r}
+lerm_freq <- lerm %>% 
+  filter(pos == "A") %>% 
+  count(lemma, sort = T)
+
+norm_freq <- norm %>% 
+  filter(pos == "A") %>% 
+  count(lemma, sort = T) %>% 
+  rename(norm_n = n) 
+
+lerm_counts <- lerm_freq %>% 
+  left_join(norm_freq, by = "lemma")
+
+lerm_counts %>% 
+  mutate(t = (norm_n * nrow(lerm))/nrow(norm),
+         diff = n - t,
+         q = round(diff / sqrt(t), 2)) %>% 
+  arrange(desc(q)) %>% 
+  head(20)
+```
+
+#### sampled (10 runs)
+
+```{r}
+norm <- norm %>% 
+  mutate(pos = str_extract(analysis, "gr': '.*?,"),
+         pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+  select(id, author, header, lemma, pos) %>% 
+  mutate(corpus = "norm")
+
+glimpse(norm)
+```
+
+(trying to) remove Lermontov's narrative poems
+
+```{r}
+corpus %>% 
+  filter(author == "М. Ю. Лермонтов") %>% 
+  arrange(desc(verses)) %>% 
+  select(verses, header) %>% 
+  distinct() %>% 
+  head(30)
+
+# number of short poems < 257 lines -- 453
+corpus %>% 
+  filter(author == "М. Ю. Лермонтов") %>% 
+  arrange(desc(verses)) %>% 
+  select(verses, header) %>% 
+  distinct() %>% 
+  filter(verses < 257) %>% nrow()
+```
+
+```{r}
+
+df <- tibble()
+x <- NULL
+
+for (i in 1:100) {
+
+  lerm_poems <- corpus %>% 
+    filter(author == "М. Ю. Лермонтов") %>% 
+    # select small poems
+    filter(verses < 257) %>% 
+    select(header) %>% 
+    distinct() %>% 
+    sample_n(150) %>% 
+    pull()
+  
+  # select lermontov bigger sample
+  lerm <- corpus %>% 
+    filter(author == "М. Ю. Лермонтов") %>% 
+    # filter selected 300 poems
+    filter(header %in% lerm_poems) %>% 
+    
+    mutate(pos = str_extract(analysis, "gr': '.*?,"),
+           pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+    select(id, author, header, lemma, pos) %>% 
+    
+    # NB sample 43000 words! to make it similar to original selection
+    # sample_n(43000) %>% 
+    mutate(corpus = "lerm")
+  
+  # glimpse(lerm)
+  
+  lerm_freq <- lerm %>% 
+    filter(pos == "A") %>% 
+    count(lemma, sort = T)
+  
+  norm_freq <- norm %>% 
+    filter(pos == "A") %>% 
+    count(lemma, sort = T) %>% 
+    rename(norm_n = n) 
+  
+  lerm_counts <- lerm_freq %>% 
+    left_join(norm_freq, by = "lemma")
+  
+  x <- lerm_counts %>% 
+    mutate(t = (norm_n * nrow(lerm))/nrow(norm),
+           diff = n - t,
+           q = round(diff / sqrt(t), 2)) %>% 
+    arrange(desc(q)) %>% 
+    head(10) %>% 
+    mutate(run = i)
+
+  df <- rbind(df, x)
+}
+
+df %>% sample_n(10)
+```
+
+Load Kjetsaa's list and calculate intersection
+
+```{r}
+adj_list_k <- readLines("../data/key_adj_lerm.txt")
+adj_list_k
+
+```
+
+```{r}
+
+df_intersections <- tibble(run = NULL,
+                           words = NULL,
+                           n = NULL)
+
+for (i in 1:100) {
+  wl <- df %>% 
+    filter(run == i) %>% 
+    pull(lemma) 
+
+  w <- intersect(adj_list_k, wl) # can later look which words exactly
+  n <- length(intersect(wl, adj_list_k))
+  
+  df_intersections[i, 1] <- i
+  df_intersections[i, 2] <- paste(w, collapse = " ", sep = " ")
+  df_intersections[i, 3] <- n
+}
+
+guiraud_results <- df_intersections
+
+guiraud_results %>% 
+  unnest_tokens(input = ...2, output = word, token = "words") %>% 
+  count(word, sort = T)
+```
+
+### log odds
+
+```{r}
+lerm_norm %>% 
+  filter(pos == "A") %>% 
+  count(corpus, lemma, sort = T) %>% 
+  bind_log_odds(corpus, lemma, n) %>% 
+  arrange(-log_odds_weighted) %>% 
+  group_by(corpus) %>% 
+  slice_max(log_odds_weighted, n = 10) %>% 
+  ungroup() %>% 
+  mutate(lemma = reorder(lemma, log_odds_weighted)) %>% 
+  ggplot(aes(x = log_odds_weighted, y = lemma, fill = corpus)) + 
+  geom_col() + 
+  facet_wrap(~corpus, scales = "free") + 
+  labs(y = NULL)
+```
+
+```{r}
+df <- tibble()
+x <- NULL
+
+for (i in 1:100) {
+
+  lerm_poems <- corpus %>% 
+    filter(author == "М. Ю. Лермонтов") %>% 
+    # select small poems
+    filter(verses < 257) %>% 
+    select(header) %>% 
+    distinct() %>% 
+    sample_n(150) %>% 
+    pull()
+  
+  # select lermontov bigger sample
+  lerm <- corpus %>% 
+    filter(author == "М. Ю. Лермонтов") %>% 
+    # filter selected 300 poems
+    filter(header %in% lerm_poems) %>% 
+    
+    mutate(pos = str_extract(analysis, "gr': '.*?,"),
+           pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+    select(id, author, header, lemma, pos) %>% 
+    
+    # NB sample 43000 words! to make it similar to original selection
+    # sample_n(43000) %>% 
+    mutate(corpus = "lerm")
+  
+  # glimpse(lerm)
+  lerm_norm <- rbind(lerm, norm)
+  
+  x <- lerm_norm %>% 
+    filter(pos == "A") %>% 
+    count(corpus, lemma, sort = T) %>% 
+    bind_log_odds(corpus, lemma, n) %>% 
+    arrange(-log_odds_weighted) %>% 
+    group_by(corpus) %>% 
+    slice_max(log_odds_weighted, n = 10) %>% 
+    ungroup() %>% 
+    filter(corpus == "lerm") %>% 
+    head(10) %>% 
+    mutate(run = i)
+
+  df <- rbind(df, x)
+}
+
+df %>% sample_n(10)
+```
+
+```{r}
+df_intersections <- tibble(run = NULL,
+                           words = NULL,
+                           n = NULL)
+
+for (i in 1:100) {
+  wl <- df %>% 
+    filter(run == i) %>% 
+    pull(lemma) 
+
+  w <- intersect(adj_list_k, wl) # can later look which words exactly
+  n <- length(intersect(wl, adj_list_k))
+  
+  df_intersections[i, 1] <- i
+  df_intersections[i, 2] <- paste(w, collapse = " ", sep = " ")
+  df_intersections[i, 3] <- n
+}
+
+logodds_results <- df_intersections
+
+# most repetitive word:
+logodds_results %>% 
+  unnest_tokens(input = ...2, output = word, token = "words") %>% 
+  count(word, sort = T)
+```
+
+### zeta
+
+```{r}
+# n adj
+lerm_norm %>% 
+  filter(pos == "A") %>% 
+  count(corpus)
+
+# prepare corpus with samples
+corpus_prepared <- lerm_norm %>% 
+  filter(pos == "A") %>% 
+  group_by(corpus) %>% 
+  sample_n(4000) %>% 
+  mutate(sample_id = ceiling(1:4000),
+         sample_id = floor(sample_id/2000)+1, 
+         sample_id = ifelse(sample_id == 3, 1, sample_id)) %>% 
+  ungroup() %>% 
+  mutate(sample_id = paste0(corpus, "_", sample_id)) %>% 
+  group_by(sample_id) %>% 
+  summarise(text = paste0(lemma, collapse = "  ")) %>% 
+  mutate(corpus = str_remove(sample_id, "_\\d+$"), 
+         path = ifelse(corpus == "norm", "secondary_set/", "primary_set/"),
+         path = paste0("zeta_tests/lerm_norm_00/", path, sample_id, ".txt"))
+
+head(corpus_prepared)
+```
+
+```{r}
+do.call(file.remove, list(
+  list.files("zeta_tests/lerm_norm_00//primary_set", full.names = TRUE)))
+
+do.call(file.remove, list(
+  list.files("zeta_tests/lerm_norm_00//secondary_set", full.names = TRUE)))
+
+for (i in 1:nrow(corpus_prepared)) {
+  writeLines(corpus_prepared$text[i], corpus_prepared$path[i])
+}
+```
+
+```{r}
+oppose(
+  gui = FALSE,
+  path = "zeta_tests/lerm_norm_00/",
+  corpus.lang = "Other",
+  text.slice.length = 500,
+  write.png.file = TRUE
+)
+```
+
+```{r}
+x <- readLines("zeta_tests/lerm_norm_00/words_preferred.txt")
+x[8:17]
+
+tibble(run = 1,
+       words = paste(x[8:17], sep = " ", collapse = " "))
+```
+
+```{r}
+df <- NULL
+temp_df <- NULL
+x <- NULL
+```
+
+```{r}
+
+
+
+# I. select random poems for lermontov
+
+  lerm_poems <- corpus %>% 
+    filter(author == "М. Ю. Лермонтов") %>% 
+    # select small poems
+    filter(verses < 257) %>% 
+    select(header) %>% 
+    distinct() %>% 
+    sample_n(150) %>% 
+    pull()
+  
+  # select lermontov bigger sample
+  lerm <- corpus %>% 
+    filter(author == "М. Ю. Лермонтов") %>% 
+    # filter selected 300 poems
+    filter(header %in% lerm_poems) %>% 
+    
+    mutate(pos = str_extract(analysis, "gr': '.*?,"),
+           pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+    select(id, author, header, lemma, pos) %>% 
+    
+    # NB sample 43000 words! to make it similar to original selection
+    # sample_n(43000) %>% 
+    mutate(corpus = "lerm")
+  
+  # glimpse(lerm)
+  lerm_norm <- rbind(lerm, norm)
+  
+
+
+  # II. prepare corpus with samples
+  corpus_prepared <- lerm_norm %>% 
+    filter(pos == "A") %>% 
+    group_by(corpus) %>% 
+    sample_n(1000) %>% 
+    mutate(sample_id = ceiling(1:1000),
+           sample_id = floor(sample_id/500)+1, 
+           sample_id = ifelse(sample_id == 3, 1, sample_id)) %>% 
+    ungroup() %>% 
+    mutate(sample_id = paste0(corpus, "_", sample_id)) %>% 
+    group_by(sample_id) %>% 
+    summarise(text = paste0(lemma, collapse = "  ")) %>% 
+    mutate(corpus = str_remove(sample_id, "_\\d+$"), 
+           path = ifelse(corpus == "norm", "secondary_set/", "primary_set/"),
+           path = paste0("zeta_tests/lerm_norm_00/", path, sample_id, ".txt"))
+  
+
+    # III. Remove old files & write new ones
+    do.call(file.remove, list(
+      list.files("zeta_tests/lerm_norm_00//primary_set", full.names = TRUE)))
+    
+    do.call(file.remove, list(
+      list.files("zeta_tests/lerm_norm_00//secondary_set", full.names = TRUE)))
+    
+    for (j in 1:nrow(corpus_prepared)) {
+      writeLines(corpus_prepared$text[j], corpus_prepared$path[j])
+    }
+
+  # IV. run zeta
+  oppose(
+    gui = FALSE,
+    path = "zeta_tests/lerm_norm_00/",
+    corpus.lang = "Other",
+    text.slice.length = 250,
+    write.png.file = TRUE
+  ) # this function changes working dir, it;s likely that it's needed to change path below to run the loop properly
+
+  x <- readLines("~/Documents/ucl/kjetsaa/scr/zeta_tests/lerm_norm_00/words_preferred.txt")
+  x[8:17]
+
+tail(df)  
+
+temp_df <- tibble(run = 20,
+         words = paste(x[8:17], sep = " ", collapse = " "), 
+         group = "Zeta")
+  
+df <- rbind(df, temp_df)
+
+df
+```
+
+```{r}
+zeta_reults <- df
+zetas <- df
+```
+
+```{r}
+glimpse(zetas)
+
+zeta_sep <- zetas %>% 
+  separate_rows(words, sep = " ")
+```
+
+```{r}
+df_intersections <- tibble(run = NULL,
+                           words = NULL,
+                           n = NULL)
+
+for (i in 1:20) {
+  wl <- zeta_sep %>% 
+    filter(run == i) %>% 
+    pull(words) 
+
+  w <- intersect(adj_list_k, wl) # can later look which words exactly
+  n <- length(intersect(wl, adj_list_k))
+  
+  df_intersections[i, 1] <- i
+  df_intersections[i, 2] <- paste(w, collapse = " ", sep = " ")
+  df_intersections[i, 3] <- n
+}
+
+zeta_results <- df_intersections
+
+zeta_results
+```
+
+Count how much these lists are similar inside one keyness measurement
+
+Count how much are they similar between each other
+
+### Plot
+
+```{r}
+
+glimpse(guiraud_results)
+glimpse(logodds_results)
+glimpse(zeta_results)
+
+
+guiraud_results %>% 
+  mutate(group = "Guiraud") %>% 
+  rbind(logodds_results %>% mutate(group = "Weighted log odds ratio")) %>% 
+  rbind(zeta_results %>% mutate(group = "Zeta")) %>% 
+  rename(run = ...1, 
+         words = ...2, 
+         n = ...3) %>% 
+  ggplot(aes(y = n, x = group, fill = group)) + 
+  geom_boxplot() + 
+  labs(y = "Number of words found in both lists (10 adjectives)", 
+       x = "Distinctiveness measure") + 
+  scale_y_continuous(limits = c(0, 10), 
+                     breaks = seq(1, 10, by = 1)) + 
+  scale_fill_manual(values = c(met.brewer("Java")[1],
+                               met.brewer("Java")[5],
+                               met.brewer("Java")[4])) + 
+  theme(legend.position = "None",
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        #legend.text = element_text(size = 16), 
+        plot.title = element_text(size = 20))
+
+ggsave("../plots/05_keywords_catch.png", plot = last_plot(),
+       width = 8, height = 6, bg = "white", dpi = 300)
+```
+
+## II. larger corpus (10k)
+
+```{r}
+t <- read.csv("../data/kjetsaa_norm_corpus.csv")
+
+t %>% 
+  separate_rows(text_raw, sep = "\n")
+```

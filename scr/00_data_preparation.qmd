@@ -1,0 +1,254 @@
+---
+title: "00_data_preparation"
+format: html
+editor: visual
+---
+
+## Data preparation
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+library(poetRee)
+```
+
+### PoeTree data
+
+Select authors from PoeTree (based on Kjetsaa's list (`authors.txt`)
+
+```{r}
+poetree_authors <- get_authors(corpus = "ru") %>% 
+  filter(str_detect(name, "Pushkin A.S.|Baratynsk|Lermontov|Zhukovsk|Vjazemsk|Tjutch|Ryleev|Batju|Koltsov|Delvig|Bestuzhev|Kjuhelb|Glinka F.N.|Jazykov|Benediktov|Kozlov I.I.|Shevyr|Polezh|Homja|Venevit|Fet")) %>% 
+  select(id_, name)
+
+poetree_authors
+```
+
+Get texts ids using authors' ids
+
+```{r}
+poem_ids <- get_poems(corpus = "ru", authors = poetree_authors$id_)
+
+glimpse(poem_ids)
+```
+
+Get texts
+
+```{r}
+vec_ids <- poem_ids$id_
+
+head(vec_ids) 
+length(vec_ids) # 4842 poems
+
+# call each text separately with lapply + catch errors where the function stopped
+texts_list <- lapply(vec_ids, function(id){
+  tryCatch( # try except
+    get_text(corpus = "ru", poem_id = id),
+    error = function(e) tibble(error = e$message, poem_id = id) 
+    # if error attach info to relevant columns
+  )
+})
+
+texts <- bind_rows(texts_list)
+
+glimpse(texts)
+```
+
+Check errors
+
+```{r}
+errors <- texts %>% 
+  filter(!is.na(error)) %>% 
+  pull(poem_id)
+
+poem_ids %>% 
+  filter(id_ %in% errors)
+```
+
+Remove errors from data and store full table
+
+```{r}
+ru_poetree <- texts %>% 
+  filter(is.na(error)) %>% # remove errors & error columns
+  select(-error, -poem_id) %>% 
+  # add text and author data
+  left_join(poem_ids %>% rename(id_poem = id_), by = "id_poem") %>% 
+  left_join(poetree_authors %>% rename(id_author = id_), by = "id_author") %>% 
+  
+  # group lines back to texts
+  group_by(id_poem) %>% 
+  mutate(poem_text = paste0(line_text, collapse = " \n ")) %>% 
+  ungroup() %>% 
+  # remove columns
+  select(-c(line_text, id_line, id_stanza, id_source, duplicate)) %>% 
+  distinct() %>% 
+  rename(author_name = name)
+
+# filter texts written before 1810 or after 1839
+# ru_poetree <- ru_poetree %>% 
+#   filter(!year_created_from < 1810 & !year_created_from > 1839) %>% 
+#   filter(!year_created_to < 1810 & !year_created_to > 1839)
+
+glimpse(ru_poetree)
+```
+
+Tokenization
+
+```{r}
+ru_poetree_tokens <- ru_poetree %>% 
+  unnest_tokens(input = poem_text, output = word, token = "words")
+```
+
+Write data
+
+```{r, eval = FALSE}
+write.csv(ru_poetree, file = "../data/poetree_ru_19c.csv") # full texts
+write.csv(ru_poetree_tokens, file = "../data/poetree_ru_19c_tokens.csv") # tokenized
+```
+
+### Kjetsaa's corpus
+
+Load manually prepared data
+
+```{r}
+kjetsaa <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
+  select(-X, -text_raw, -note)
+
+glimpse(kjetsaa)
+```
+
+Add author names transliteration
+
+```{r}
+# load prepared poetree data if needed
+# ru_poetree <- read.csv("../data/poetree_ru_1810-1839.csv")
+
+authors_translit <- tibble(
+  author_name = unique(ru_poetree$author_name),
+  author_name_ru = c("Е. А. Баратынский", "К. Н. Батюшков", "В. Г. Бенедиктов", 
+                     "А. А. Бестужев-Марлинский", "А. А. Дельвиг", "Ф. Н. Глинка", 
+                     "А. С. Хомяков", "Н. М. Языков", "В. К. Кюхельбекер", 
+                     "А. В. Кольцов", "И. И. Козлов", "М. Ю. Лермонтов",
+                     "А. И. Полежаев", "А. С. Пушкин", "К. Ф. Рылеев",
+                     "С. П. Шевырев", "Ф. И. Тютчев", "Д. В. Веневитинов",
+                     "П. А. Вяземский", "В. А. Жуковский"
+                     )
+)
+
+authors_translit
+```
+
+Attach transliterated names and tokenize
+
+```{r}
+kjetsaa_tokens <- kjetsaa %>% 
+  rename(author_name_ru = author) %>% 
+  left_join(authors_translit, by = "author_name_ru") %>% 
+  unnest_tokens(input = text_final, output = word, token = "words")
+```
+
+Write tokenized df
+
+```{r, eval = F}
+write.csv(kjetsaa_tokens, file = "../data/kjetsaa_norm_tokens.csv")
+```
+
+## Data overview
+
+Load prepared data
+
+### poetree
+
+```{r}
+poetree_ru <- read.csv("../data/poetree_ru_19c.csv") %>% select(-X)
+
+glimpse(poetree_ru)
+```
+
+Count number of lines & words
+
+```{r}
+# number of lines per author
+poetree_ru %>% 
+  # remove all multiple newlines
+  mutate(poem_text = str_replace_all(poem_text, "\\n{2,}", "\n")) %>% 
+  group_by(id_poem) %>% 
+  summarise(
+    author = author_name,
+    n_lines = str_count(poem_text, "\n")+1,
+    .groups = "drop"
+  ) %>% 
+  group_by(author) %>% 
+  summarise(n_lines_total = sum(n_lines),
+            .groups = "drop")
+
+poetree_ru %>% 
+  # remove all multiple newlines
+  mutate(poem_text = str_replace_all(poem_text, "\\n{2,}", "\n")) %>% 
+  group_by(id_poem) %>% 
+  summarise(
+    author = author_name,
+    n_lines = str_count(poem_text, "\n")+1,
+    .groups = "drop"
+  ) %>% 
+  summarise(sum(n_lines)) # total number of lines
+```
+
+Load lemmatized data for word counting
+
+```{r}
+poetree_lemma <- read.csv("../data/poetree_ru_19c_lemma.csv") %>% select(-X)
+
+glimpse(poetree_lemma)
+```
+
+```{r}
+poetree_lemma %>% 
+  count(lemma) %>% nrow()
+```
+
+Proportion of words written by each author
+
+```{r}
+poetree_lemma %>% 
+  group_by(author_name) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  mutate(perc = round(n / nrow(poetree_lemma) * 100, 1))
+```
+
+### Kjetsaa's norm corpus
+
+```{r}
+kjetsaa_norm <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";")
+
+# number of lines
+kjetsaa_norm %>% 
+  separate_rows(text_final, sep = "\n") %>% 
+  filter(text_final != "") %>% 
+  nrow()
+
+nrow(kjetsaa_norm) # number of texts
+```
+
+Number of words & lemmas
+
+```{r}
+kjetsaa_lemma <- read.csv("../data/kjetsaa_norm_lemma.csv")
+
+nrow(kjetsaa_lemma)
+
+kjetsaa_lemma %>% 
+  count(lemma) %>% nrow()
+```
+
+Number of words in each text
+
+```{r}
+nwords_texts <- kjetsaa_lemma %>% 
+  group_by(header, author_name_ru) %>% 
+  count()
+
+nwords_texts
+```

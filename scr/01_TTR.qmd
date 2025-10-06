@@ -1,0 +1,801 @@
+---
+title: "01_TTR"
+format: html
+editor: visual
+---
+
+## TTR
+
+## Load data & pckg
+
+This notebook replicates Kjetsaa's plot on TTR in poetic corpora.
+
+```{r}
+library(tidyverse)
+
+library(MetBrewer)
+library(ggbump)
+library(cowplot)
+
+theme_set(theme_minimal())
+```
+
+Load data
+
+```{r}
+# corpus with all words from RNC by 20 authors
+corpus <- read.csv("../data/poetree_ru_19c_lemma.csv") %>% 
+  # some fixes with colum names etc.
+  select(-X) %>% 
+  rename(author = author_name)
+
+glimpse(corpus)
+```
+
+## Analysis
+
+### Sampling
+
+Number of tokens per author
+
+```{r}
+corpus %>% 
+  count(author, sort = T)
+```
+
+Create a subset with authors \> 30k tokens
+
+```{r}
+# create list of authors with more than 30k tokens
+authors_30k <- corpus %>% 
+  count(author, sort = T) %>% 
+  filter(n > 30000) %>% 
+  pull(author)
+
+authors_30k # 10 authors
+```
+
+```{r}
+# 30000k min corpora => 200 words step samples, 150 samples total
+
+sample_size <- 200
+samples_number <- 150
+
+corpus_sampled <- corpus %>% 
+  filter(author %in% c("Lermontov M.Ju.", "Tjutchev F.I.", "Baratynskij E.A.")) %>% 
+  # filter(author == "М. Ю. Лермонтов") %>% 
+  group_by(author) %>% 
+  # total sample size
+  sample_n(30000) %>% 
+  # create samples for each author
+  mutate(sample_x = sample(
+    rep(
+      1:samples_number, each = sample_size # 150 samples with 200 words
+    )
+  )) %>% 
+  # add author's name to sample
+  unite(sample_id, c(author, sample_x), remove = F) %>% 
+  ungroup()
+
+
+# quick check
+head(corpus_sampled)
+corpus_sampled %>% count(sample_id) %>% 
+  ungroup() %>% sample_n(10) # 150 samples with 200 words
+```
+
+```{r}
+# simple TTR example
+corpus_sampled %>% 
+  filter(author %in% c("Lermontov M.Ju.", "Tjutchev F.I.", "Baratynskij E.A.")) %>% 
+  group_by(author) %>% 
+  # first we have number of tokens
+  sample_n(1000) %>% 
+  # then select only unique words
+  select(author, lemma) %>% 
+  distinct() %>% 
+  # count their number
+  count() %>% 
+  ungroup()
+```
+
+### 3 authors replication
+
+Replication of Kjetsaa's 1973 figure
+
+```{r}
+v <- c(1:samples_number) # vector to count samples
+
+# tibble to store results
+df <- tibble(author = NULL, 
+             n = NULL)
+s <- NULL
+x <- NULL
+
+for (i in 1:length(v)) {
+  s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
+  
+  x <- corpus_sampled %>% 
+      filter(author %in% c("Lermontov M.Ju.", "Tjutchev F.I.", "Baratynskij E.A.")) %>% 
+      filter(sample_x %in% c(s)) %>% 
+      select(author, lemma) %>% 
+      distinct() %>% 
+      ungroup() %>% 
+      count(author) %>%  
+      # add column with total number of tokens (n_samples * sample size)
+      mutate(n_tokens = s[i] * sample_size)
+  
+  df <- rbind(df, x)
+}
+
+
+# find max number of lemma
+max <- df %>% 
+  group_by(author) %>% 
+  slice_max(n) %>% ungroup() %>% 
+  rename(max_lemma = n,
+         max_n_tokens = n_tokens)
+
+plot_1 <- df %>% 
+  # attach max lemma values for annotation
+  # left_join(max, by = "author") %>% 
+  ggplot(aes(x = n_tokens, y = n,
+         group = author, colour = author)) + 
+  #geom_point() + 
+  geom_line(aes(lty = author), linewidth = 1.2) + 
+  labs(y = "N types (lemmas)", x = "N tokens") + 
+  scale_linetype_manual(values = c(3,1,2)) + 
+  scale_colour_manual(values = c(met.brewer("Java")[1],
+                                 met.brewer("Java")[5],
+                                 met.brewer("Java")[2])) + 
+  scale_x_continuous(breaks = seq(0, 31000, by = 5000), 
+                     limits = c(0, 34000)) + 
+  scale_y_continuous(breaks = seq(1000, 7000, by = 1000),
+                     limits = c(0, 7000)) + 
+  geom_point(data = max, 
+             aes(x = max_n_tokens, y = max_lemma, group = author),
+             show.legend = FALSE) + 
+  geom_text(data = max %>% filter(author != "Baratynskij E.A."), 
+            aes(x = max_n_tokens, y = max_lemma, label = max_lemma), 
+            hjust = -0.2, size = 8,
+            show.legend = FALSE) + 
+  geom_text(data = max %>% filter(author == "Baratynskij E.A."),
+            aes(x = max_n_tokens, y = max_lemma, label = max_lemma), 
+            hjust = -0.2, vjust = -0.5, size = 8, show.legend = FALSE) +
+  theme(axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 16),
+        legend.position = "bottom",
+        legend.title = element_blank())
+
+plot_1
+
+ggsave("../plots/01_ttr_3-authors.png", plot = last_plot(),
+       width = 6.5, height = 6, bg = "white", dpi = 300)
+```
+
+### largest authorial corpora
+
+Select authors with the biggest corpora & find when the TTR growth stops
+
+```{r}
+sample_size <- 200
+samples_number <- 600
+
+corpus_sampled <- corpus %>% 
+  filter(author %in% c("Zhukovskij V.A.", "Pushkin A.S.", "Lermontov M.Ju.")) %>% 
+  # filter(author == "М. Ю. Лермонтов") %>% 
+  group_by(author) %>% 
+  # total sample size
+  sample_n(120000) %>% 
+  # create 5 samples for each author
+  mutate(sample_x = sample(
+    rep(
+      1:samples_number, each = sample_size # 150 samples with 200 words
+    )
+  )) %>% 
+  # add author's name to sample
+  unite(sample_id, c(author, sample_x), remove = F) 
+
+
+# quick check
+head(corpus_sampled)
+corpus_sampled %>% count(sample_id) %>% head()
+```
+
+Draw curves & find max
+
+```{r}
+v <- c(1:samples_number) # vector to count samples
+
+# tibble to store results
+df <- tibble(author = NULL, 
+             n = NULL)
+s <- NULL
+x <- NULL
+
+for (i in 1:length(v)) {
+  s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
+  
+  x <- corpus_sampled %>% 
+      filter(sample_x %in% c(s)) %>% 
+      select(author, lemma) %>% 
+      distinct() %>% 
+      ungroup() %>% 
+      count(author) %>%  
+      # add column with total number of tokens (n_samples * sample size)
+      mutate(n_tokens = s[i] * sample_size)
+  
+  df <- rbind(df, x)
+}
+
+
+# find max number of lemma
+max <- df %>% 
+  group_by(author) %>% 
+  slice_max(n) %>% ungroup() %>% 
+  rename(max_lemma = n,
+         max_n_tokens = n_tokens)
+
+plot_2 <- df %>% 
+  # attach max lemma values for annotation
+  # left_join(max, by = "author") %>% 
+  ggplot(aes(x = n_tokens, y = n,
+         group = author, colour = author)) + 
+  #geom_point() + 
+  geom_line(aes(lty = author), linewidth = 1.2) + 
+  labs(y = "N types (lemmas)", x = "N tokens") + 
+  scale_linetype_manual(values = c(1,3,2)) + 
+  scale_colour_manual(values = c(met.brewer("Java")[5],
+                                 met.brewer("Java")[3],
+                                 met.brewer("Java")[6])) + 
+  scale_x_continuous(breaks = seq(10000, 125000, by = 35000), 
+                     limits = c(0, 145000)) + 
+  #scale_y_continuous(breaks = seq(1000, 6000, by = 1000),
+  #                   limits = c(0, 6000)) + 
+  geom_point(data = max, 
+             aes(x = max_n_tokens, y = max_lemma, group = author),
+             show.legend = FALSE) + 
+  geom_text(data = max, 
+            aes(x = max_n_tokens, y = max_lemma, label = max_lemma), 
+            hjust = -0.2, size = 8, 
+            show.legend = FALSE) + 
+  theme(axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 16),
+        legend.position = "bottom",
+        legend.title = element_blank())
+
+plot_2
+
+ggsave("../plots/02_ttr_120k.png", plot = last_plot(),
+      width = 6.5, height = 6, bg = "white", dpi = 300)
+```
+
+### more samples & authors
+
+```{r}
+corpus %>% 
+  filter(author %in% authors_30k) %>% 
+  group_by(author) %>% 
+  count(sort = T)
+```
+
+Draw curves for 11 authors with corpus size \>30k
+
+```{r}
+# 30000k min corpora => 200 words step samples, 150 samples total
+
+sample_size <- 200
+samples_number <- 150
+
+corpus_sampled <- corpus %>% 
+  filter(author %in% authors_30k) %>% 
+  # filter(author == "М. Ю. Лермонтов") %>% 
+  group_by(author) %>% 
+  # total sample size
+  sample_n(30000) %>% 
+  # create samples for each author
+  mutate(sample_x = sample(
+    rep(
+      1:samples_number, each = sample_size # 150 samples with 200 words
+    )
+  )) %>% 
+  # add author's name to sample
+  unite(sample_id, c(author, sample_x), remove = F) %>% 
+  ungroup()
+```
+
+```{r}
+v <- c(1:samples_number) # vector to count samples
+
+# tibble to store results
+df <- tibble(author = NULL, 
+             n = NULL)
+s <- NULL
+x <- NULL
+
+for (i in 1:length(v)) {
+  s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
+  
+  x <- corpus_sampled %>% 
+      filter(sample_x %in% c(s)) %>% 
+      select(author, lemma) %>% 
+      distinct() %>% 
+      ungroup() %>% 
+      count(author) %>%  
+      # add column with total number of tokens (n_samples * sample size)
+      mutate(n_tokens = s[i] * sample_size)
+  
+  df <- rbind(df, x)
+}
+
+
+# find max number of lemma
+max <- df %>% 
+  group_by(author) %>% 
+  slice_max(n) %>% ungroup() %>% 
+  rename(max_lemma = n,
+         max_n_tokens = n_tokens) %>% 
+  mutate(author_is = ifelse(author == "Lermontov M.Ju.", 
+                            "Lermontov M.Ju.", "Other authors"))
+
+plot_3 <- df %>% 
+#  mutate(author_is = ifelse(author == "Lermontov M.Ju.", 
+#                            "Lermontov M.Ju.", "Other authors")) %>% 
+  
+  # attach max lemma values for annotation
+  left_join(max, by = "author") %>% 
+  ggplot(aes(x = n_tokens, y = n,
+         group = author, colour = author_is)) + 
+  #geom_point() + 
+  geom_line(#aes(lty = author_is), 
+            linewidth = 1.2, alpha = 0.6) + 
+  labs(y = "N types (lemmas)", x = "N tokens") + 
+  #scale_linetype_manual(values = c(1,3,2)) + 
+  scale_colour_manual(values = c(met.brewer("Java")[5],
+                                 met.brewer("Java")[6],
+                                 met.brewer("Java")[2],
+                                 met.brewer("Archambault"),
+                                 met.brewer("Cassatt1"))) + 
+  scale_x_continuous(breaks = seq(0, 30000, by = 5000), 
+                     limits = c(0, 34000)) + 
+  #scale_y_continuous(breaks = seq(1000, 6000, by = 1000),
+  #                   limits = c(0, 6000)) + 
+  geom_point(data = max, 
+             aes(x = max_n_tokens, y = max_lemma, group = author),
+             show.legend = FALSE) + 
+  geom_text(data = max  %>% filter(author %in% c("Lermontov M.Ju.", 
+                                               "Vjazemskij P.A.")), 
+            aes(x = max_n_tokens, y = max_lemma, label = max_lemma), 
+            hjust = -0.2, size = 8, 
+            show.legend = FALSE) + 
+  theme(axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 16),
+        legend.position = "bottom",
+        legend.title = element_blank())
+
+plot_3
+
+ggsave("../plots/03_ttr_11authors.png", plot = last_plot(),
+      width = 7, height = 6, bg = "white", dpi = 300)
+```
+
+### fig 1
+
+Merge plots to figure 1
+
+```{r}
+library(jpeg)
+library(magick)
+img <- readJPEG("../plots/Kjetsaa_1973_fig1.jpg")
+
+# draw an empty plot
+plot_0 <- df %>% 
+  ggplot(aes(x = n_tokens, y = n,
+         group = author, colour = author)) + 
+  labs(x = "", y = "") + #theme(axis.text = element_blank())
+  draw_image(img, width = 1.4, height = 1.4,
+             x = -0.25, y = -0.1)
+
+
+plot_0
+```
+
+```{r}
+plot_grid(plot_0, plot_1, plot_2, plot_3,
+          align = "h", nrow = 2, labels = c('A', 'B', 'C', 'D'), label_size = 36,
+          scale = c(1, 0.8, 0.8, 0.8))
+
+ggsave("../plots/fig_1.png", plot = last_plot(), 
+       bg = "white", dpi = 300,
+       width = 20, height = 16)
+```
+
+## boxplots
+
+```{r}
+# sample 10k sample, 200 w step, 50 samples
+
+sample_size <- 200
+samples_number <- 50
+
+# tibble to store results
+df <- tibble(author = NULL, 
+               n = NULL)
+
+for (j in 1:100) { 
+  corpus_sampled <- corpus %>% 
+    filter(author %in% authors_30k) %>% 
+    # filter(author == "М. Ю. Лермонтов") %>% 
+    group_by(author) %>% 
+    # total sample size
+    sample_n(30000) %>% 
+    # create 5 samples for each author
+    mutate(sample_x = sample(
+      rep(
+        1:samples_number, each = sample_size # 150 samples with 200 words
+      )
+    )) %>% 
+    # add author's name to sample
+    unite(sample_id, c(author, sample_x), remove = F) 
+  
+  # quick check
+  # head(corpus_sampled)
+  # corpus_sampled %>% count(sample_id) %>% head()
+  
+  v <- c(1:samples_number) # vector to count samples
+  
+  s <- NULL
+  x <- NULL
+  
+  for (i in 1:length(v)) {
+    s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
+    
+    x <- corpus_sampled %>% 
+        filter(sample_x %in% c(s)) %>% 
+        select(author, lemma) %>% 
+        distinct() %>% 
+        ungroup() %>% 
+        count(author) %>%  
+        # add column with total number of tokens (n_samples * sample size)
+        mutate(n_tokens = s[i] * sample_size, 
+               run = j) 
+    
+    df <- rbind(df, x)
+  }
+}  
+
+glimpse(df)
+```
+
+Draw curves
+
+```{r}
+# find max number of lemma
+max <- df %>% 
+  group_by(author, run) %>% 
+  slice_max(n) %>% ungroup() %>% 
+  rename(max_lemma = n,
+         max_n_tokens = n_tokens)
+
+max %>% 
+  filter(max_n_tokens != 10000)
+```
+
+```{r}
+# count ranks withtin each run
+max %>% 
+  arrange(author, max_lemma) %>% # arrange results for each author
+  group_by(run) %>% 
+  mutate(rank = rank(-max_lemma)) %>% # create ranks within runs
+  ungroup() %>% 
+  filter(run == 1) %>% # check
+  arrange(rank)
+
+runs_ranks <- max %>% 
+  arrange(author, max_lemma) %>% # arrange results for each author
+  group_by(run) %>% 
+  mutate(rank = rank(-max_lemma)) %>% # create ranks within runs
+  ungroup() 
+
+head(runs_ranks)
+
+max %>% filter(author == "Lermontov M.Ju.") %>% 
+  pull(max_lemma) %>% 
+  mean()
+```
+
+```{r}
+runs_ranks %>% 
+  mutate(group = ifelse(author == "Lermontov M.Ju.", "Our poet", "Others")) %>% 
+  ggplot(aes(y = max_lemma, x = reorder(author, max_lemma, mean), 
+             group = author, fill = group)) + 
+  geom_boxplot() + 
+  scale_x_discrete(limits = rev) + 
+  scale_fill_manual(values = c(met.brewer("Klimt")[1], 
+                                  met.brewer("Java")[5])) + 
+  geom_hline(yintercept = 2800, 
+             lty = 5, linewidth = 1, 
+             colour = met.brewer("Java")[5],
+             alpha = 0.7) + 
+  labs(x = "Authors", y = "Number of unique words", 
+       fill = "", 
+       title = "Number of unique words",
+       subtitle = "15 authors (>30k tokens)\n10k word samples (random), 100 iterations") + 
+  theme(axis.text.x = element_text(angle = 90, size = 12),
+        axis.text.y = element_text(size = 16), 
+        axis.title = element_text(size = 18), 
+        #legend.text = element_blank(),
+        legend.position = "None",
+        plot.title = element_text(size = 20),
+        plot.subtitle = element_text(size = 20))
+
+ggsave("../plots/03_TTR_sample_test.png", plot = last_plot(),
+       width = 8, height = 6, bg = "white", dpi = 300)
+```
+
+### % of unique words
+
+Next step: Sample size (x) to % of unique words out of sample: check lermontov
+
+```{r}
+# create list of authors with more than 10k tokens
+authors_10k <- corpus %>% 
+  count(author, sort = T) %>% 
+  filter(n > 10000) %>% 
+  pull(author)
+
+sample_size <- 200
+samples_number <- 50
+
+corpus_sampled <- corpus %>% 
+  filter(author %in% authors_10k) %>% 
+  # filter(author == "М. Ю. Лермонтов") %>% 
+  group_by(author) %>% 
+  # total sample size
+  sample_n(10000) %>% 
+  # create 5 samples for each author
+  mutate(sample_x = sample(
+    rep(
+      1:samples_number, each = sample_size # 150 samples with 200 words
+    )
+  )) %>% 
+  # add author's name to sample
+  unite(sample_id, c(author, sample_x), remove = F) 
+
+v <- c(1:samples_number) # vector to count samples
+
+# tibble to store results
+df <- tibble(author = NULL, 
+             n = NULL)
+s <- NULL
+x <- NULL
+
+for (i in 1:length(v)) {
+  s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
+  
+  x <- corpus_sampled %>% 
+      filter(sample_x %in% c(s)) %>% 
+      select(author, lemma) %>% 
+      distinct() %>% 
+      ungroup() %>% 
+      count(author) %>%  
+      # add column with total number of tokens (n_samples * sample size)
+      mutate(n_tokens = s[i] * sample_size)
+  
+  df <- rbind(df, x)
+}
+
+
+# find max number of lemma
+max <- df %>% 
+  group_by(author) %>% 
+  slice_max(n) %>% ungroup() %>% 
+  rename(max_lemma = n,
+         max_n_tokens = n_tokens)
+
+
+
+
+df %>% 
+  #filter(author %in% c("А. С. Пушкин", "М. Ю. Лермонтов")) %>% 
+  #filter(run == 20) %>% 
+  mutate(group = ifelse(author == "Lermontov M.Ju.", "Our poet", "Others")) %>% 
+  
+  mutate(perc = round((n/n_tokens) *100, 2)) %>% 
+  ggplot(aes(x = n_tokens, y = perc, colour = author)) + 
+  geom_line(aes(lty = group), linewidth = 1) + 
+  labs(y = "% lemmas", x = "N tokens") + 
+  # scale_linetype_manual(values = c(2,1,2)) + 
+  # scale_colour_manual(values = c(met.brewer("Java")[1],
+  #                                met.brewer("Java")[5],
+  #                                met.brewer("Java")[2])) + 
+  #scale_x_continuous(breaks = seq(6000, 30000, by = 6000), 
+  #                   limits = c(0, 36000)) + 
+  #scale_y_continuous(breaks = seq(1000, 6000, by = 1000),
+  #                   limits = c(0, 6000)) + 
+  #geom_point(data = max, 
+  #           aes(x = max_n_tokens, y = max_lemma, group = author)) + 
+  #geom_text(data = max, 
+  #          aes(x = max_n_tokens, y = max_lemma, label = max_lemma), 
+  #          hjust = -0.2, size = 8) + 
+  theme(axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 16), 
+        plot.title = element_text(size = 20)) + 
+  labs(colour = "", lty = "", 
+       title = "% of unique words given sample size")
+
+
+# ggsave("../plots/04_TTR_perc.png", plot = last_plot(),
+#       width = 8, height = 6, bg = "white", dpi = 300)
+```
+
+Thoughts on this: seems like it depends on sample size/selection? I.e. for small-sample poets similar poems are selected.
+
+```{r}
+runs_ranks %>% 
+  mutate(clr = ifelse(author == "Lermontov M.Ju.", "Our author", "Others")) %>% 
+  ggplot(aes(x = run, y = max_lemma, group = author, colour = clr)) +
+    geom_bump(size = 1, alpha = 0.6) +
+    geom_point(size = 2, alpha = 0.6) + 
+    scale_color_manual(values = c(met.brewer("Klimt")[1], 
+                                  met.brewer("Java")[5])) + 
+  labs(x = "Run", y = "Max number of lemmas", 
+       colour = "", 
+       title = "Number of unique words in 10,000 word samples",
+       subtitle = "100 runs") + 
+  scale_x_continuous(breaks = seq(1, 100, by = 1)) + 
+  scale_y_continuous(breaks = seq(3000, 6000, by = 250)) + 
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12), 
+        legend.text = element_text(size = 12))
+
+ggsave("../plots/03_max-lemmas_10-runs.png", plot = last_plot(),
+       width = 8, height = 6, bg = "white", dpi = 300)
+```
+
+```{r}
+runs_ranks %>% 
+  ggplot(aes(x = run, y = max_lemma, group = author, colour = author)) +
+    geom_bump(size = 1) +
+    geom_point(size = 1) 
+```
+
+```{r}
+ggplot(runs_ranks, aes(x = run, y = -rank, color = author)) +
+  geom_bump(size = 1) +
+  geom_point(size = 1)
+```
+
+All authors
+
+```{r}
+# add ranks by number of tokens
+token_ranks <- corpus %>% 
+  count(author, sort = T) %>% 
+  mutate(rank_total = row_number()) %>% 
+  select(-n) 
+
+token_ranks
+```
+
+```{r}
+# min corpus size is 5k tokens
+
+x <- NULL
+df <- NULL
+
+for (i in 1:100) {
+  x <- corpus %>% 
+    group_by(author) %>% 
+    sample_n(5000) %>% 
+    ungroup() %>% 
+    select(author, lemma) %>% 
+    distinct() %>% 
+    count(author, sort = T) %>% 
+    mutate(rank = row_number(),
+           run = i)
+  
+  df <- rbind(df, x)
+}
+
+glimpse(df)
+```
+
+```{r}
+means <- df %>% 
+  group_by(author) %>% 
+  summarise(mean_n = mean(n))
+
+df %>% 
+  left_join(token_ranks, by = "author") %>% 
+  left_join(means, by = "author") %>% 
+  mutate(author_r = paste0(author, " (", rank_total, ")"),
+         clr = ifelse(author == "Lermontov M.Ju.", "Our author", "Others")) %>% 
+  ggplot(aes(x = reorder(author_r, -n, mean), y = n, fill = clr)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = c(met.brewer("Klimt")[1], 
+                                  met.brewer("Java")[5])) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(x = "Author (rank in total number of tokens)",
+       y = "N types (lemmas)",
+       fill = "")
+```
+
+```{r}
+ranks_cor <- df %>% 
+  group_by(author) %>% 
+  summarise(mean_rank = mean(rank)) %>% 
+  left_join(token_ranks, by = "author") 
+
+cor(ranks_cor$mean_rank, ranks_cor$rank_total, method = "pearson") 
+# correlation between rank in TTR sampling and in rank in terms of corpus size
+```
+
+Same run with 2k samples
+
+```{r}
+authors_10k
+
+glimpse(corpus)
+
+df <- NULL
+x <- NULL
+
+for (i in 1:100) {
+  x <- corpus %>% 
+    filter(author %in% authors_10k) %>% 
+    group_by(author) %>% 
+    sample_n(2000) %>% 
+    select(author, word) %>% 
+    distinct() %>% 
+    count(sort = T) %>% 
+    ungroup() %>% 
+    mutate(run = i, 
+           rank = row_number())
+  
+  df <- rbind(df, x)
+}
+
+df %>% sample_n(10)
+```
+
+Check how stable the number of unique words are
+
+```{r}
+df %>% 
+  mutate(clr = ifelse(author == "Lermontov M.Ju.", "Our author", "Others")) %>% 
+  ggplot(aes(x = run, y = n, group = author, colour = clr)) +
+    geom_bump(size = 1, alpha = 0.6) +
+    geom_point(size = 2, alpha = 0.6) + 
+    scale_color_manual(values = c(met.brewer("Klimt")[1], 
+                                  met.brewer("Java")[5])) + 
+  labs(x = "Run", y = "Max number of lemmas", 
+       colour = "", 
+       title = "Number of unique words in 2,000 word samples",
+       subtitle = "100 runs") + 
+  scale_x_continuous(breaks = seq(1, 100, by = 1)) + 
+  scale_y_continuous(breaks = seq(3000, 6000, by = 250)) + 
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12), 
+        legend.text = element_text(size = 12))
+```
+
+```{r}
+df %>% 
+  ggplot(aes(x = run, y = n, group = author, color = author)) + 
+  geom_point() + geom_line()
+```
+
+Check ranks stability
+
+```{r}
+df %>% 
+  mutate(author_cln = ifelse(author == "Lermontov M.Ju.", "Lerm", "Other")) %>% 
+  ggplot(aes(x = run, y = -rank, color = author_cln)) +
+  geom_bump(size = 1, alpha = 0.4) +
+  geom_point(size = 1, alpha = 0.4)
+```
