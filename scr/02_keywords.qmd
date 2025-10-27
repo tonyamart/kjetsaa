@@ -19,14 +19,14 @@ theme_set(theme_minimal())
 ```
 
 ```{r}
-# corpus with all words from RNC by 20 authors
-corpus <- read.csv("../data/20authors_all_lemmatized.csv") %>% select(-X)
+# corpus with all words from ru-poetree by 20 authors
+corpus <- read.csv("../data/poetree_ru_19c_lemma.csv") %>% select(-X)
 
 glimpse(corpus)
 ```
 
 ```{r}
-norm <- read.csv("../data/kjetsaa_norm_lemmatized.csv")
+norm <- read.csv("../data/kjetsaa_norm_lemma.csv") %>% select(-X)
 glimpse(norm)
 ```
 
@@ -34,21 +34,21 @@ glimpse(norm)
 
 ```{r}
 lerm_poems <- corpus %>% 
-  filter(author == "М. Ю. Лермонтов") %>% 
-  select(header) %>% 
+  filter(author_name == "Lermontov M.Ju.") %>% 
+  select(id_poem) %>% 
   distinct() %>% 
-  sample_n(150) %>% 
+  sample_n(170) %>% 
   pull()
 
 # select lermontov bigger sample
 lerm <- corpus %>% 
-  filter(author == "М. Ю. Лермонтов") %>% 
-  # filter selected 300 poems
-  filter(header %in% lerm_poems) %>% 
+  filter(author_name == "Lermontov M.Ju.") %>% 
+  # filter selected 150 poems
+  filter(id_poem %in% lerm_poems) %>% 
   
   mutate(pos = str_extract(analysis, "gr': '.*?,"),
          pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
-  select(id, author, header, lemma, pos) %>% 
+  select(id_poem, author_name, title, lemma, pos) %>% 
   
   # NB sample 43000 words! to make it similar to original selection
   # sample_n(43000) %>% 
@@ -63,8 +63,10 @@ Prepare 'norm' corpus for comparison
 norm <- norm %>% 
   mutate(pos = str_extract(analysis, "gr': '.*?,"),
          pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
-  select(id, author, header, lemma, pos) %>% 
-  mutate(corpus = "norm")
+  select(id, author_name, header, lemma, pos) %>% 
+  mutate(corpus = "norm") %>% 
+  rename(title = header,
+         id_poem = id)
 
 glimpse(norm)
 ```
@@ -100,8 +102,8 @@ norm %>%
 ```
 
 ```{r}
-lerm %>% select(header) %>% distinct()
-norm %>% select(header) %>% distinct()
+lerm %>% select(title) %>% distinct()
+norm %>% select(title) %>% distinct()
 ```
 
 ### Giuraud coeff
@@ -130,89 +132,107 @@ lerm_counts %>%
 #### sampled (10 runs)
 
 ```{r}
-norm <- norm %>% 
-  mutate(pos = str_extract(analysis, "gr': '.*?,"),
-         pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
-  select(id, author, header, lemma, pos) %>% 
-  mutate(corpus = "norm")
+# repeated
+# norm <- norm %>% 
+#   mutate(pos = str_extract(analysis, "gr': '.*?,"),
+#          pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+#   select(id, author, header, lemma, pos) %>% 
+#   mutate(corpus = "norm")
 
 glimpse(norm)
+
+unique(norm$pos)
 ```
 
 (trying to) remove Lermontov's narrative poems
 
 ```{r}
-corpus %>% 
-  filter(author == "М. Ю. Лермонтов") %>% 
-  arrange(desc(verses)) %>% 
-  select(verses, header) %>% 
-  distinct() %>% 
-  head(30)
-
-# number of short poems < 257 lines -- 453
-corpus %>% 
-  filter(author == "М. Ю. Лермонтов") %>% 
-  arrange(desc(verses)) %>% 
-  select(verses, header) %>% 
-  distinct() %>% 
-  filter(verses < 257) %>% nrow()
+# corpus %>% 
+#   filter(author_name == "Lermontov M.Ju.") %>% 
+#   arrange(desc(verses)) %>% 
+#   select(verses, header) %>% 
+#   distinct() %>% 
+#   head(30)
+# 
+# # number of short poems < 257 lines -- 453
+# corpus %>% 
+#   filter(author == "М. Ю. Лермонтов") %>% 
+#   arrange(desc(verses)) %>% 
+#   select(verses, header) %>% 
+#   distinct() %>% 
+#   filter(verses < 257) %>% nrow()
 ```
+
+### Lerm - Guiraud coef iterative calculation
 
 ```{r}
 
 df <- tibble()
 x <- NULL
 
-for (i in 1:100) {
+pos_key <- c("A", "S", "V")
 
-  lerm_poems <- corpus %>% 
-    filter(author == "М. Ю. Лермонтов") %>% 
-    # select small poems
-    filter(verses < 257) %>% 
-    select(header) %>% 
-    distinct() %>% 
-    sample_n(150) %>% 
-    pull()
+for (pos_x in pos_key) {
   
-  # select lermontov bigger sample
-  lerm <- corpus %>% 
-    filter(author == "М. Ю. Лермонтов") %>% 
-    # filter selected 300 poems
-    filter(header %in% lerm_poems) %>% 
-    
-    mutate(pos = str_extract(analysis, "gr': '.*?,"),
-           pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
-    select(id, author, header, lemma, pos) %>% 
-    
-    # NB sample 43000 words! to make it similar to original selection
-    # sample_n(43000) %>% 
-    mutate(corpus = "lerm")
-  
-  # glimpse(lerm)
-  
-  lerm_freq <- lerm %>% 
-    filter(pos == "A") %>% 
-    count(lemma, sort = T)
-  
-  norm_freq <- norm %>% 
-    filter(pos == "A") %>% 
-    count(lemma, sort = T) %>% 
-    rename(norm_n = n) 
-  
-  lerm_counts <- lerm_freq %>% 
-    left_join(norm_freq, by = "lemma")
-  
-  x <- lerm_counts %>% 
-    mutate(t = (norm_n * nrow(lerm))/nrow(norm),
-           diff = n - t,
-           q = round(diff / sqrt(t), 2)) %>% 
-    arrange(desc(q)) %>% 
-    head(10) %>% 
-    mutate(run = i)
+  for (i in 1:100) {
 
-  df <- rbind(df, x)
+    lerm_poems <- corpus %>% 
+      filter(author_name == "Lermontov M.Ju.") %>% 
+      # select small poems
+      # filter(verses < 257) %>% 
+      select(title) %>% 
+      distinct() %>% 
+      sample_n(270) %>% 
+      pull()
+    
+    # select lermontov bigger sample
+    lerm <- corpus %>% 
+      filter(author_name == "Lermontov M.Ju.") %>% 
+      # filter selected 300 poems
+      filter(title %in% lerm_poems) %>% 
+      
+      mutate(pos = str_extract(analysis, "gr': '.*?,"),
+             pos = str_remove_all(pos, "gr': '|=.*$|,")) %>% 
+      select(id, author_name, title, lemma, pos) %>% 
+      
+      # NB sample 43000 words! to make it similar to original selection
+      sample_n(43000) %>% 
+      mutate(corpus = "lerm")
+    
+    # glimpse(lerm)
+    
+    # calc freq in lermontov
+    lerm_freq <- lerm %>% 
+      filter(pos == pos_x) %>% 
+      count(lemma, sort = T)
+    
+    # freq in norm corpus
+    norm_freq <- norm %>% 
+      filter(pos == pos_x) %>% 
+      count(lemma, sort = T) %>% 
+      rename(norm_n = n) 
+    
+    # join tables
+    lerm_counts <- lerm_freq %>% 
+      left_join(norm_freq, by = "lemma")
+    
+    # calculate theor freq & guiraud coeff, filter top-10
+    x <- lerm_counts %>% 
+      mutate(t = (norm_n * nrow(lerm))/nrow(norm),
+             diff = n - t,
+             q = round(diff / sqrt(t), 2)) %>% 
+      arrange(desc(q)) %>% 
+      head(10) %>% 
+      mutate(run = i,
+             rank = row_number(),
+             pos_k = pos_x)
+    
+    # append results
+    df <- rbind(df, x)
+  }
 }
 
+df %>% head(20)
 df %>% sample_n(10)
 ```
 
