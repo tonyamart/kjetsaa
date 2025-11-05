@@ -559,9 +559,9 @@ plot_2a <- df %>%
 
 plot_2a
 
-ggsave("../plots/00_ttr_30ksamples.png", plot = last_plot(), 
-       dpi = 300, bg = "white", 
-       width = 9, height = 7)
+# ggsave("../plots/00_ttr_30ksamples.png", plot = last_plot(), 
+#        dpi = 300, bg = "white", 
+#        width = 9, height = 7)
 ```
 
 ### 2k samples
@@ -576,7 +576,7 @@ for (i in 1:100) {
     filter(author %in% authors_30k) %>% 
     group_by(author) %>% 
     # sample random 2k words
-    sample_n(1800) %>% 
+    sample_n(2000) %>% 
     count(word) %>% 
     ungroup() %>% 
     count(author)
@@ -593,7 +593,7 @@ plot_2b <- df_2k %>%
   labs(x = "", 
        y = "N types (unique words)",
        fill = "", colour = "",
-       subtitle = "1800 words samples, 100 iterations") + 
+       subtitle = "2000 words samples, 100 iterations") + 
   scale_fill_manual(values = c(met.brewer("Java")[5],
                                met.brewer("Java")[4])) + 
   scale_colour_manual(values = c(met.brewer("Java")[5],
@@ -626,17 +626,76 @@ glimpse(norm)
 ```{r}
 norm %>% 
   count(author_name, sort = T)
+
+glimpse(norm)
+```
+
+Add some random words to have 2k samples for all authors
+
+```{r}
+sh <- corpus %>% 
+  filter(author == "Shevyrev S.P.") %>% 
+  sample_n(20) %>% 
+  select(author, word, lemma)
+
+bar <- corpus %>% 
+  filter(author == "Baratynskij E.A.") %>% 
+  sample_n(55) %>% 
+  select(author, word, lemma)
+
+tjut <- corpus %>% 
+  filter(author == "Tjutchev F.I.") %>% 
+  sample_n(147) %>% 
+  select(author, word, lemma)
+
+bat <- corpus %>% 
+  filter(author == "Batjushkov K.N.") %>% 
+  sample_n(164) %>% 
+  select(author, word, lemma)
+
 ```
 
 ```{r}
-norm_types <- norm %>% 
+# sample words for authors with >2k 
+norm_2k <- norm %>% 
+  filter(!author_name %in% c("Shevyrev S.P.", "Baratynskij E.A.",
+                        "Tjutchev F.I.", "Batjushkov K.N.")) %>% 
   group_by(author_name) %>% 
-  sample_n(1836) %>% 
+  sample_n(2000) %>% 
+  select(author_name, word, lemma) %>% 
+  ungroup()
+
+# select 4 authors with <2k
+norm_4a <- norm %>% 
+  filter(author_name %in% c("Shevyrev S.P.", "Baratynskij E.A.",
+                        "Tjutchev F.I.", "Batjushkov K.N.")) %>% 
+  select(author_name, word, lemma)
+
+# attach random samples
+norm_4a <- norm_4a %>% 
+  rename(author = author_name) %>% 
+  rbind(bar, bat, tjut, sh) 
+
+# check n words
+norm_2k %>% 
+  rename(author = author_name) %>% 
+  rbind(norm_4a) %>% 
+  count(author)
+
+norm_2k_all <- norm_2k %>% 
+  rename(author = author_name) %>% 
+  rbind(norm_4a) 
+```
+
+Count N lemmas
+
+```{r}
+norm_types <- norm_2k_all %>% 
+  group_by(author) %>% 
   count(word) %>% 
   ungroup() %>% 
-  count(author_name) %>% 
-  rename(n_kjetsaa = n,
-         author = author_name)
+  count(author) %>% 
+  rename(n_kjetsaa = n)
 
 norm_types
 ```
@@ -659,12 +718,14 @@ plot_2b <- df_2k %>%
   labs(x = "", 
        y = "N types (unique words)",
        fill = "", colour = "",
-       subtitle = "1 800 words samples, 100 iterations",
-       caption = "* Violet triangles are the 1800 word samples\nfrom the replicated Kjetsaa's Norm corpus") + 
+       subtitle = "2000 words samples, 100 iterations",
+       caption = "* Violet triangles are the 2000 word samples\nfrom the replicated Kjetsaa's Norm corpus") + 
   scale_fill_manual(values = c(met.brewer("Java")[5],
                                met.brewer("Java")[4])) + 
   scale_colour_manual(values = c(met.brewer("Java")[5],
                                met.brewer("Java")[4])) + 
+  scale_y_continuous(limits = c(1090, 1420),
+    breaks = seq(1100, 1400, 100)) + 
   theme(
     axis.text = element_text(size = 16),
     axis.text.x = element_text(angle = 90),
