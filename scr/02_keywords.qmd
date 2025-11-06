@@ -853,6 +853,176 @@ ggsave(filename = "../plots/fig_3_kjetsaa_norm.png",
        width = 15, height = 10)
 ```
 
+## analyse keywords
+
+```{r}
+res_k <- readRDS("../data/keywords_res_kjetsaa_norm.rds")
+
+glimpse(res_k)
+```
+
+N words of different pos in 4 authors & top-freq words
+
+```{r}
+corpus %>% 
+  filter(author_name %in% c("Lermontov M.Ju.", "Baratynskij E.A.",
+                            "Tjutchev F.I.", "Fet A.A.")) %>% 
+  filter(pos %in% c("A", "S", "V")) %>% 
+  count(author_name, pos)
+```
+
+```{r}
+freq_l <- corpus %>% 
+  filter(author_name %in% c("Lermontov M.Ju.")) %>% 
+  filter(pos %in% c("A", "S", "V")) %>% 
+  group_by(pos) %>% 
+  count(lemma, sort = T) %>% 
+  slice_max(order_by = n, n = 10)
+
+key_l <- res_k %>% 
+  filter(author == "Lermontov M.Ju." & words != "") %>% 
+  separate_rows(words, sep = " ") %>% 
+  group_by(pos) %>% 
+  count(words, sort = T) 
+
+intersect(freq_l$lemma, key_l$words)
+
+res_k %>% 
+  filter(author == "Lermontov M.Ju." & words != "") %>% 
+  filter(group == "Guiraud\ncoeff.") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Lermontov M.Ju." & words != "") %>% 
+  filter(group == "Weighted\nlog odds\nratio") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Lermontov M.Ju." & words != "") %>% 
+  filter(group == "Zeta") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+```
+
+```{r}
+freq_b <- corpus %>% 
+  filter(author_name %in% c("Baratynskij E.A.")) %>% 
+  filter(pos %in% c("A", "S", "V")) %>% 
+  group_by(pos) %>% 
+  count(lemma, sort = T) %>% 
+  slice_max(order_by = n, n = 10)
+
+key_b <- res_k %>% 
+  filter(author == "Baratynkij E.A." & words != "") %>% 
+  separate_rows(words, sep = " ") %>% 
+  group_by(pos) %>% 
+  count(words, sort = T) 
+
+intersect(freq_b$lemma, key_b$words)
+
+res_k %>% 
+  filter(author == "Baratynkij E.A." & words != "") %>% 
+  filter(group == "Guiraud\ncoeff.") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Baratynkij E.A." & words != "") %>% 
+  filter(group == "Weighted\nlog odds\nratio") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Baratynkij E.A." & words != "") %>% 
+  filter(group == "Zeta") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+```
+
+```{r}
+freq_t <- corpus %>% 
+  filter(author_name %in% c("Tjutchev F.I.")) %>% 
+  filter(pos %in% c("A", "S", "V")) %>% 
+  group_by(pos) %>% 
+  count(lemma, sort = T) %>% 
+  slice_max(order_by = n, n = 10)
+
+key_t <- res_k %>% 
+  filter(author == "Tjutchev F.I." & words != "") %>% 
+  separate_rows(words, sep = " ") %>% 
+  group_by(pos) %>% 
+  count(words, sort = T) 
+
+intersect(freq_t$lemma, key_t$words)
+
+res_k %>% 
+  filter(author == "Tjutchev F.I." & words != "") %>% 
+  filter(group == "Guiraud\ncoeff.") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Tjutchev F.I." & words != "") %>% 
+  filter(group == "Weighted\nlog odds\nratio") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Tjutchev F.I." & words != "") %>% 
+  filter(group == "Zeta") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+```
+
+```{r}
+freq_f <- corpus %>% 
+  filter(author_name %in% c("Fet A.A.")) %>% 
+  filter(pos %in% c("A", "S", "V")) %>% 
+  group_by(pos) %>% 
+  count(lemma, sort = T) %>% 
+  slice_max(order_by = n, n = 10)
+
+key_t <- res_k %>% 
+  filter(author == "Fet A.A." & words != "") %>% 
+  separate_rows(words, sep = " ") %>% 
+  group_by(pos) %>% 
+  count(words, sort = T) 
+
+intersect(freq_t$lemma, key_t$words)
+
+res_k %>% 
+  filter(author == "Fet A.A." & words != "") %>% 
+  filter(group == "Guiraud\ncoeff.") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Fet A.A." & words != "") %>% 
+  filter(group == "Weighted\nlog odds\nratio") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+
+res_k %>% 
+  filter(author == "Fet A.A." & words != "") %>% 
+  filter(group == "Zeta") %>% 
+  separate_rows(words, sep = " ") %>% 
+  count(words, pos, sort = T) %>% 
+  arrange(-desc(pos))
+```
+
 # II. 5k norm
 
 Same experiment with a larger contrast corpus
