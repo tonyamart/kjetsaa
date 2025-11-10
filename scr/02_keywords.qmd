@@ -83,6 +83,16 @@ corpus %>%
                             "Tjutchev F.I."
                             )) %>% 
   count(author_name, sort = T)
+
+# lemmas
+corpus %>%   
+  filter(author_name %in% c("Baratynskij E.A.",
+                            "Lermontov M.Ju.",
+                            "Fet A.A.",
+                            "Tjutchev F.I."
+                            )) %>% 
+  count(author_name, word, sort = T) %>% 
+  count(author_name, sort = T)
 ```
 
 Number of words in Kjetsaa's original authorial corpora:
@@ -993,13 +1003,13 @@ freq_f <- corpus %>%
   count(lemma, sort = T) %>% 
   slice_max(order_by = n, n = 10)
 
-key_t <- res_k %>% 
+key_f <- res_k %>% 
   filter(author == "Fet A.A." & words != "") %>% 
   separate_rows(words, sep = " ") %>% 
   group_by(pos) %>% 
   count(words, sort = T) 
 
-intersect(freq_t$lemma, key_t$words)
+intersect(freq_f$lemma, key_f$words)
 
 res_k %>% 
   filter(author == "Fet A.A." & words != "") %>% 
