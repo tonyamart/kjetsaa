@@ -1,6 +1,6 @@
 ---
 title: "01_TTR"
-format: html
+format: md
 editor: visual
 ---
 
@@ -10,22 +10,24 @@ editor: visual
 
 This notebook replicates Kjetsaa's plot on TTR in poetic corpora.
 
-```{r}
+```{r, messa=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidytext)
 
 library(MetBrewer)
-library(ggbump)
 library(cowplot)
+# libs to attach jpeg to plots
+library(jpeg)
+library(magick)
 
 theme_set(theme_minimal())
 ```
 
 Load data
 
-```{r}
+```{r, include=TRUE, echo=FALSE}
 # corpus with all words from RNC by 20 authors
-corpus <- read.csv("../data/poetree_ru_19c_lemma.csv") %>% 
+corpus <- read.csv("../data/large_poetree_ru_19c_lemma.csv") %>% 
   # some fixes with colum names etc.
   select(-X) %>% 
   rename(author = author_name)
@@ -35,18 +37,16 @@ glimpse(corpus)
 
 ## Analysis
 
-### Sampling
+Check number of tokens per author
 
-Number of tokens per author
-
-```{r}
+```{r, include=TRUE, echo=FALSE}
 corpus %>% 
   count(author, sort = T)
 ```
 
 Create a subset with authors \> 30k tokens
 
-```{r}
+```{r, include=FALSE, echo=FALSE}
 # create list of authors with more than 30k tokens
 authors_30k <- corpus %>% 
   count(author, sort = T) %>% 
@@ -56,15 +56,21 @@ authors_30k <- corpus %>%
 authors_30k # 10 authors
 ```
 
-```{r}
-# 30000k min corpora => 200 words step samples, 150 samples total
+### Fig 1-b: 3 authors replication
 
-sample_size <- 200
-samples_number <- 150
+Replication of Kjetsaa's 1973 figure: first prepare samples data (three authors, 30k sampled tokens, assigned to 150 samples of 200 words).
 
+```{r, include=TRUE, echo=FALSE}
+
+sample_size <- 200 # number of words added in each step
+samples_number <- 150 # for ~30k tokens
+
+
+# prep corpus data just for three authors
 corpus_sampled <- corpus %>% 
-  filter(author %in% c("Lermontov M.Ju.", "Tjutchev F.I.", "Baratynskij E.A.")) %>% 
-  # filter(author == "М. Ю. Лермонтов") %>% 
+  filter(author %in% c("Lermontov M.Ju.", 
+                       "Tjutchev F.I.", 
+                       "Baratynskij E.A.")) %>% 
   group_by(author) %>% 
   # total sample size
   sample_n(30000) %>% 
@@ -78,33 +84,12 @@ corpus_sampled <- corpus %>%
   unite(sample_id, c(author, sample_x), remove = F) %>% 
   ungroup()
 
-
-# quick check
-head(corpus_sampled)
-corpus_sampled %>% count(sample_id) %>% 
-  ungroup() %>% sample_n(10) # 150 samples with 200 words
+# quick check: each author should have 150 samples of 200 words:
+corpus_sampled %>% count(sample_x, author) %>% head()
 ```
 
-```{r}
-# simple TTR example
-corpus_sampled %>% 
-  filter(author %in% c("Lermontov M.Ju.", "Tjutchev F.I.", "Baratynskij E.A.")) %>% 
-  group_by(author) %>% 
-  # first we have number of tokens
-  sample_n(1000) %>% 
-  # then select only unique words
-  select(author, lemma) %>% 
-  distinct() %>% 
-  # count their number
-  count() %>% 
-  ungroup()
-```
+```{r, include=TRUE, echo=TRUE}
 
-### 3 authors replication
-
-Replication of Kjetsaa's 1973 figure
-
-```{r}
 v <- c(1:samples_number) # vector to count samples
 
 # tibble to store results
@@ -117,7 +102,9 @@ for (i in 1:length(v)) {
   s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
   
   x <- corpus_sampled %>% 
-      filter(author %in% c("Lermontov M.Ju.", "Tjutchev F.I.", "Baratynskij E.A.")) %>% 
+      filter(author %in% c("Lermontov M.Ju.", 
+                           "Tjutchev F.I.", 
+                           "Baratynskij E.A.")) %>% 
       filter(sample_x %in% c(s)) %>% 
       select(author, lemma) %>% 
       distinct() %>% 
@@ -175,11 +162,13 @@ plot_1
 #        width = 6.5, height = 6, bg = "white", dpi = 300)
 ```
 
-### largest authorial corpora
+### Fig 1-c: largest authorial corpora
 
 Select authors with the biggest corpora & find when the TTR growth stops
 
-```{r}
+```{r, include=FALSE, echo=TRUE}
+# prepare sample data
+
 sample_size <- 200
 samples_number <- 600
 
@@ -200,13 +189,12 @@ corpus_sampled <- corpus %>%
 
 
 # quick check
-head(corpus_sampled)
-corpus_sampled %>% count(sample_id) %>% head()
+corpus_sampled %>% count(author, sample_x) %>% head()
 ```
 
 Draw curves & find max
 
-```{r}
+```{r, include=TRUE, echo=FALSE}
 v <- c(1:samples_number) # vector to count samples
 
 # tibble to store results
@@ -273,18 +261,21 @@ plot_2
 #       width = 6.5, height = 6, bg = "white", dpi = 300)
 ```
 
-### more samples & authors
+### Fig 1-d: 11 authors
 
-```{r}
+Draw curves for 11 authors with corpus size \>30k
+
+```{r, include=FALSE, echo=FALSE}
+# check n of tokens in 30k-selection
 corpus %>% 
   filter(author %in% authors_30k) %>% 
   group_by(author) %>% 
   count(sort = T)
 ```
 
-Draw curves for 11 authors with corpus size \>30k
+```{r, include=FALSE, echo=FALSE}
+# prepare data
 
-```{r}
 # 30000k min corpora => 200 words step samples, 150 samples total
 
 sample_size <- 200
@@ -307,7 +298,7 @@ corpus_sampled <- corpus %>%
   ungroup()
 ```
 
-```{r}
+```{r, include=T, echo=F}
 v <- c(1:samples_number) # vector to count samples
 
 # tibble to store results
@@ -378,18 +369,17 @@ plot_3 <- df %>%
         legend.title = element_blank())
 
 plot_3
-
-ggsave("../plots/03_ttr_11authors.png", plot = last_plot(),
-      width = 7, height = 6, bg = "white", dpi = 300)
+# 
+# ggsave("../plots/03_ttr_11authors.png", plot = last_plot(),
+#       width = 7, height = 6, bg = "white", dpi = 300)
 ```
 
-### fig 1
+### Merge Fig 1
 
-Merge plots to figure 1
+Merge new plots to the Kjetsaa's one
 
-```{r}
-library(jpeg)
-library(magick)
+```{r, include=F, echo=F}
+
 img <- readJPEG("../plots/Kjetsaa_1973_fig1.jpg")
 
 # draw an empty plot
@@ -404,118 +394,23 @@ plot_0 <- df %>%
 plot_0
 ```
 
-```{r}
+```{r, include=T, echo=F}
 plot_grid(plot_0, plot_1, plot_2, plot_3,
           align = "h", nrow = 2, labels = c('A', 'B', 'C', 'D'), label_size = 36,
           scale = c(1, 0.8, 0.8, 0.8))
 
-ggsave("../plots/fig_1.png", plot = last_plot(), 
-       bg = "white", dpi = 300,
-       width = 20, height = 16)
+# ggsave("../plots/fig_1.png", plot = last_plot(), 
+#        bg = "white", dpi = 300,
+#        width = 20, height = 16)
 ```
 
-### % of unique words
+## Fig 2: TTR boxplots
 
-Next step: Sample size (x) to % of unique words out of sample: check lermontov
+### Fig 2-a: 30k authors
 
-```{r}
-# # create list of authors with more than 10k tokens
-# authors_10k <- corpus %>% 
-#   count(author, sort = T) %>% 
-#   filter(n > 10000) %>% 
-#   pull(author)
+Iterative calculation of TTR for 10 authors with 30k tokens
 
-sample_size <- 200
-samples_number <- 150
-
-corpus_sampled <- corpus %>% 
-  filter(author %in% authors_30k) %>% 
-  # filter(author == "М. Ю. Лермонтов") %>% 
-  group_by(author) %>% 
-  # total sample size
-  sample_n(30000) %>% 
-  # create 5 samples for each author
-  mutate(sample_x = sample(
-    rep(
-      1:samples_number, each = sample_size # 150 samples with 200 words
-    )
-  )) %>% 
-  # add author's name to sample
-  unite(sample_id, c(author, sample_x), remove = F) 
-
-v <- c(1:samples_number) # vector to count samples
-
-# tibble to store results
-df <- tibble(author = NULL, 
-             n = NULL)
-s <- NULL
-x <- NULL
-
-for (i in 1:length(v)) {
-  s <- v[1:i] # iterator that takes 1, then 1 2, then 1 2 3, etc.
-  
-  x <- corpus_sampled %>% 
-      filter(sample_x %in% c(s)) %>% 
-      select(author, lemma) %>% 
-      distinct() %>% 
-      ungroup() %>% 
-      count(author) %>%  
-      # add column with total number of tokens (n_samples * sample size)
-      mutate(n_tokens = s[i] * sample_size)
-  
-  df <- rbind(df, x)
-}
-
-
-# find max number of lemma
-max <- df %>% 
-  group_by(author) %>% 
-  slice_max(n) %>% ungroup() %>% 
-  rename(max_lemma = n,
-         max_n_tokens = n_tokens)
-
-
-
-
-df %>% 
-  #filter(author %in% c("А. С. Пушкин", "М. Ю. Лермонтов")) %>% 
-  #filter(run == 20) %>% 
-  mutate(group = ifelse(author == "Lermontov M.Ju.", "Our poet", "Others")) %>% 
-  
-  mutate(perc = round((n/n_tokens) *100, 2)) %>% 
-  ggplot(aes(x = n_tokens, y = perc, colour = author)) + 
-  geom_line(aes(lty = group), linewidth = 1) + 
-  labs(y = "% lemmas", x = "N tokens") + 
-  # scale_linetype_manual(values = c(2,1,2)) + 
-  # scale_colour_manual(values = c(met.brewer("Java")[1],
-  #                                met.brewer("Java")[5],
-  #                                met.brewer("Java")[2])) + 
-  #scale_x_continuous(breaks = seq(6000, 30000, by = 6000), 
-  #                   limits = c(0, 36000)) + 
-  #scale_y_continuous(breaks = seq(1000, 6000, by = 1000),
-  #                   limits = c(0, 6000)) + 
-  #geom_point(data = max, 
-  #           aes(x = max_n_tokens, y = max_lemma, group = author)) + 
-  #geom_text(data = max, 
-  #          aes(x = max_n_tokens, y = max_lemma, label = max_lemma), 
-  #          hjust = -0.2, size = 8) + 
-  theme(axis.text = element_text(size = 16),
-        axis.title = element_text(size = 18),
-        legend.text = element_text(size = 16), 
-        plot.title = element_text(size = 20)) + 
-  labs(colour = "", lty = "", 
-       title = "% of unique words given sample size")
-
-
-# ggsave("../plots/04_TTR_perc.png", plot = last_plot(),
-#       width = 8, height = 6, bg = "white", dpi = 300)
-```
-
-## boxplots
-
-### 30k authors
-
-```{r}
+```{r, include=T, echo=T}
 
 i <- NULL
 df <- NULL
@@ -527,7 +422,7 @@ for (i in 1:100) {
     group_by(author) %>% 
     # sample random 10k words
     sample_n(30000) %>% 
-    count(word) %>% 
+    count(lemma) %>% 
     ungroup() %>% 
     count(author)
 
@@ -559,14 +454,14 @@ plot_2a <- df %>%
 
 plot_2a
 
-# ggsave("../plots/00_ttr_30ksamples.png", plot = last_plot(), 
-#        dpi = 300, bg = "white", 
+# ggsave("../plots/00_ttr_30ksamples.png", plot = last_plot(),
+#        dpi = 300, bg = "white",
 #        width = 9, height = 7)
 ```
 
 ### 2k samples
 
-```{r}
+```{r, include=T, echo=T}
 i <- NULL
 df_2k <- NULL
 
@@ -577,7 +472,7 @@ for (i in 1:100) {
     group_by(author) %>% 
     # sample random 2k words
     sample_n(2000) %>% 
-    count(word) %>% 
+    count(lemma) %>% 
     ungroup() %>% 
     count(author)
 
@@ -614,62 +509,60 @@ plot_2b
 #        width = 9, height = 7)
 ```
 
-### 
+TTR in Kjetsaa's norm: read lemmatized corpus, calculate N tokens per author
 
-TTR in Kjetsaa's norm:
-
-```{r}
+```{r, include=F, echo=F}
+# read the file with Kjetsaa's corpus lemmatized:
 norm <- read.csv("../data/kjetsaa_norm_lemma.csv")
+
 glimpse(norm)
 ```
 
-```{r}
+```{r, include=T, echo=F}
 norm %>% 
   count(author_name, sort = T)
-
-glimpse(norm)
 ```
 
-Add some random words to have 2k samples for all authors
+```{r, include=F, echo=F}
+# Manually added some random words to have 2k samples for all authors
 
-```{r}
 sh <- corpus %>% 
   filter(author == "Shevyrev S.P.") %>% 
   sample_n(20) %>% 
-  select(author, word, lemma)
+  select(author, lemma)
 
 bar <- corpus %>% 
   filter(author == "Baratynskij E.A.") %>% 
   sample_n(55) %>% 
-  select(author, word, lemma)
+  select(author, lemma)
 
 tjut <- corpus %>% 
   filter(author == "Tjutchev F.I.") %>% 
   sample_n(147) %>% 
-  select(author, word, lemma)
+  select(author, lemma)
 
 bat <- corpus %>% 
   filter(author == "Batjushkov K.N.") %>% 
   sample_n(164) %>% 
-  select(author, word, lemma)
+  select(author, lemma)
 
 ```
 
-```{r}
+```{r, include=F, echo=F}
 # sample words for authors with >2k 
 norm_2k <- norm %>% 
   filter(!author_name %in% c("Shevyrev S.P.", "Baratynskij E.A.",
                         "Tjutchev F.I.", "Batjushkov K.N.")) %>% 
   group_by(author_name) %>% 
   sample_n(2000) %>% 
-  select(author_name, word, lemma) %>% 
+  select(author_name, lemma) %>% 
   ungroup()
 
 # select 4 authors with <2k
 norm_4a <- norm %>% 
   filter(author_name %in% c("Shevyrev S.P.", "Baratynskij E.A.",
                         "Tjutchev F.I.", "Batjushkov K.N.")) %>% 
-  select(author_name, word, lemma)
+  select(author_name, lemma)
 
 # attach random samples
 norm_4a <- norm_4a %>% 
@@ -687,12 +580,12 @@ norm_2k_all <- norm_2k %>%
   rbind(norm_4a) 
 ```
 
-Count N lemmas
+Count N lemmas in Kjetsaa's corpus
 
-```{r}
+```{r, include=TRUE, echo=FALSE}
 norm_types <- norm_2k_all %>% 
   group_by(author) %>% 
-  count(word) %>% 
+  count(lemma) %>% 
   ungroup() %>% 
   count(author) %>% 
   rename(n_kjetsaa = n)
@@ -700,9 +593,9 @@ norm_types <- norm_2k_all %>%
 norm_types
 ```
 
-### fig 2
+### Fig 2-b
 
-```{r}
+```{r, include=T, echo=F}
 plot_2b <- df_2k %>% 
   left_join(norm_types, by = "author") %>% 
   filter(author != "Fet A.A.") %>% 
@@ -724,8 +617,8 @@ plot_2b <- df_2k %>%
                                met.brewer("Java")[4])) + 
   scale_colour_manual(values = c(met.brewer("Java")[5],
                                met.brewer("Java")[4])) + 
-  scale_y_continuous(limits = c(1090, 1420),
-    breaks = seq(1100, 1400, 100)) + 
+  #scale_y_continuous(limits = c(1090, 1420),
+  #  breaks = seq(1100, 1400, 100)) + 
   theme(
     axis.text = element_text(size = 16),
     axis.text.x = element_text(angle = 90),
@@ -741,11 +634,13 @@ plot_2b <- df_2k %>%
 plot_2b
 ```
 
-```{r}
+### Merge Fig 2
+
+```{r, include=T, echo=T}
 plot_grid(plot_2a, plot_2b, align = "h", nrow = 1, 
           labels = c('A', 'B'), scale = 0.9, label_size = 24)
 
-ggsave("../plots/fig_2.png", plot = last_plot(), 
-       dpi = 300, bg = "white", 
-       width = 12, height = 7)
+# ggsave("../plots/fig_2.png", plot = last_plot(),
+#        dpi = 300, bg = "white",
+#        width = 12, height = 7)
 ```
