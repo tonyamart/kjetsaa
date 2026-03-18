@@ -1,16 +1,14 @@
 ---
 title: "02_keywords"
-format: html
+format: md
 editor: visual
 ---
 
 ## Keywords analysis
 
-Q: are the most intersected words also the most frequent ones
-
 ## Load data & pckg
 
-```{r}
+```{r, include=F, echo=F, message=F, warning=F}
 library(tidyverse)
 library(tidytext)
 library(tidylo)
@@ -23,9 +21,9 @@ theme_set(theme_minimal())
 
 Load data
 
-```{r}
+```{r, includ=T, echo=F}
 # corpus with all words from ru-poetree by 20 authors
-corpus <- read.csv("../data/poetree_ru_19c_lemma.csv") %>% select(-X)
+corpus <- read.csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-X)
 
 # extract POS tags in a sep column
 corpus <- corpus %>% 
@@ -35,9 +33,11 @@ corpus <- corpus %>%
 glimpse(corpus)
 ```
 
-```{r}
+Kjetsaa's norm corpus replication:
+
+```{r, include=T, echo=F}
 # Kjetsaa's norm corpus replication
-norm <- read.csv("../data/kjetsaa_norm_lemma.csv") %>% select(-X)
+norm <- read.csv("../data/large_kjetsaa_norm.csv")
 
 # create pos column
 norm <- norm %>% 
@@ -53,15 +53,9 @@ glimpse(norm)
 
 ### overview
 
-```{r}
-corpus %>% 
-  select(author_name) %>% 
-  distinct()
-```
+Number of poems by 4 authors
 
-Number of poems by author
-
-```{r}
+```{r, include=T, echo=F}
 corpus %>% 
   filter(author_name %in% c("Baratynskij E.A.",
                             "Lermontov M.Ju.",
@@ -73,26 +67,19 @@ corpus %>%
   count(author_name, sort = T)
 ```
 
-Number of words
+Number of words / lemmas
 
-```{r}
+```{r, include=T, echo=F}
 corpus %>%   
   filter(author_name %in% c("Baratynskij E.A.",
                             "Lermontov M.Ju.",
                             "Fet A.A.",
                             "Tjutchev F.I."
                             )) %>% 
-  count(author_name, sort = T)
-
-# lemmas
-corpus %>%   
-  filter(author_name %in% c("Baratynskij E.A.",
-                            "Lermontov M.Ju.",
-                            "Fet A.A.",
-                            "Tjutchev F.I."
-                            )) %>% 
-  count(author_name, word, sort = T) %>% 
-  count(author_name, sort = T)
+  group_by(author_name) %>% 
+  summarise(n_words = n(),
+            n_lemmas = n_distinct(lemma),
+            .groups = "drop")
 ```
 
 Number of words in Kjetsaa's original authorial corpora:
@@ -109,16 +96,16 @@ Number of words in Kjetsaa's original authorial corpora:
 
 ## FN
 
-```{r}
+```{r, include=F, echo=T}
 # define pos tags
 pos_key <- c("A", "S", "V")
 ```
 
-Functions to run the sampling for different measures
+Initialise functions to run the sampling for different measures
 
 ### Guiraud
 
-```{r}
+```{r, echo=T}
 
 # AUTHOR = author's name in Latin transcription, eg "Lermontov M.Ju."
 # N_POEMS = limit number of poems in a sample, eg 270
@@ -209,7 +196,7 @@ guiraud_coeff <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
 
 ### Log odds
 
-```{r}
+```{r, echo=T}
 log_odds_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
 
   df <- tibble()
@@ -276,7 +263,7 @@ log_odds_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
 
 ### Zeta
 
-```{r}
+```{r, echo=T}
 zeta_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
   
   df <- NULL
@@ -339,12 +326,12 @@ zeta_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
         summarise(text = paste0(lemma, collapse = "  ")) %>% 
         mutate(corpus = str_remove(sample_id, "_\\d+$"), 
                path = ifelse(corpus == "norm", "secondary_set/", "primary_set/"),
-               path = paste0("zeta_tests/author_norm_00/", path, sample_id, ".txt"))
+               path = paste0("../data/zeta_tests/author_norm_00/", path, sample_id, ".txt"))
       
     
         # III. Remove old files & write new ones
         do.call(file.remove, list(
-          list.files("zeta_tests/author_norm_00//primary_set", full.names = TRUE)))
+          list.files("../data/zeta_tests/author_norm_00//primary_set", full.names = TRUE)))
         
         do.call(file.remove, list(
           list.files("zeta_tests/author_norm_00//secondary_set", full.names = TRUE)))
@@ -356,7 +343,7 @@ zeta_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
       # IV. run zeta
       oppose(
         gui = FALSE,
-        path = "zeta_tests/author_norm_00/",
+        path = "../data/zeta_tests/author_norm_00/",
         corpus.lang = "Other",
         text.slice.length = 250,
         write.png.file = TRUE
@@ -365,7 +352,7 @@ zeta_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
       # return normal wd
       setwd(stable_wd)
       # read the results
-      x <- readLines("~/Documents/ucl/kjetsaa/scr/zeta_tests/author_norm_00/words_preferred.txt")
+      x <- readLines("~/Documents/github/kjetsaa/data/zeta_tests/author_norm_00/words_preferred.txt")
       x[8:17] # read top-10 words (first lines are comments to thelist)
     
       temp_df <- tibble(run = i,
@@ -386,7 +373,7 @@ zeta_count <- function(AUTHOR, N_POEMS, SAMPLE_SIZE, NORM) {
 
 ### calc intersection
 
-```{r}
+```{r, echo=T}
 calculate_intersection <- function(author_lists, results_df) {
 
   df_intersections <- tibble(pos = NULL,
@@ -441,7 +428,7 @@ calculate_intersection <- function(author_lists, results_df) {
 
 ### plot
 
-```{r}
+```{r, echo=F}
 # simple pos translation table
 pos_transl <- tibble(
   pos = c("A", "S", "V"),
@@ -449,7 +436,7 @@ pos_transl <- tibble(
 )
 ```
 
-```{r}
+```{r, echo=T}
 
 plot_author <- function(guiraud_res, logodds_res, zeta_res) {
   
@@ -499,7 +486,7 @@ plot_author <- function(guiraud_res, logodds_res, zeta_res) {
 
 Load lists of keywords for Lermontov
 
-```{r}
+```{r, include=F, echo=T}
 fl <- list.files(path = "../data/kjetsaa_lists/", 
                  pattern = "^1983_.*?_lerm.txt",
                  full.names = TRUE)
@@ -513,7 +500,7 @@ lerm_lists <- tibble(
 )
 ```
 
-```{r}
+```{r, include=T, echo=F}
 # check lists if needed
 lerm_ll <- lerm_lists %>% 
   pull(text) %>% 
@@ -524,13 +511,13 @@ lerm_ll[[2]][1:10] # S
 lerm_ll[[3]][1:10] # V
 ```
 
-```{r}
+```{r, echo=T, include=T}
 lerm_gr <- guiraud_coeff(AUTHOR = "Lermontov M.Ju.", 
                          N_POEMS = 270,
                          SAMPLE_SIZE = 43000,
                          NORM = "kjetsaa")
 
-head(lerm_gr)
+head(lerm_gr, 5)
 
 # calculate intersections for Guiraud coeff
 lerm_gr_int <- calculate_intersection(author_lists = lerm_lists, 
@@ -538,13 +525,13 @@ lerm_gr_int <- calculate_intersection(author_lists = lerm_lists,
 head(lerm_gr_int)
 ```
 
-```{r}
+```{r, echo=T, include=F}
 lerm_lr <- log_odds_count(AUTHOR = "Lermontov M.Ju.",
                           N_POEMS = 280,
                           SAMPLE_SIZE = 43000,
                           NORM = "kjetsaa")
 
-head(lerm_lr, 11)
+head(lerm_lr, 15)
 
 lerm_lr_int <- calculate_intersection(author_lists = lerm_lists, 
                                       results_df = lerm_lr)
@@ -552,7 +539,7 @@ lerm_lr_int <- calculate_intersection(author_lists = lerm_lists,
 head(lerm_lr_int)
 ```
 
-```{r}
+```{r, include=F, echo=F, message=F, warning=F}
 lerm_zr <- zeta_count(AUTHOR = "Lermontov M.Ju.",
                       N_POEMS = 270,
                       SAMPLE_SIZE = 43000,
@@ -567,7 +554,50 @@ lerm_zr_int <- calculate_intersection(author_lists = lerm_lists,
 head(lerm_lr_int)
 ```
 
-```{r}
+Save the word lists
+
+```{r, include=T, echo=T}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- lerm_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Lermontov") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- lerm_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Lermontov") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- lerm_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Lermontov") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+lerm_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(lerm_wl, 3)
+
+lerm_wl$word_list[3]
+```
+
+Create plots & store intersection data
+
+```{r, include = T, echo=F}
 plot_lerm <- plot_author(guiraud_res = lerm_gr_int, 
                          logodds_res = lerm_lr_int,
                          zeta_res = lerm_zr_int) + 
@@ -577,7 +607,7 @@ plot_lerm <- plot_author(guiraud_res = lerm_gr_int,
 plot_lerm
 ```
 
-```{r}
+```{r, echo = T, include = F}
 x <- lerm_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(lerm_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -588,7 +618,7 @@ global_res <- NULL
 global_res <- rbind(global_res, x)
 ```
 
-```{r}
+```{r, echo = F}
 rm(lerm_gr, lerm_lr, lerm_zr, x)
 ```
 
@@ -596,7 +626,7 @@ rm(lerm_gr, lerm_lr, lerm_zr, x)
 
 Load Kjetsaa's lists
 
-```{r}
+```{r, include=F, echo=T}
 fl <- list.files(path = "../data/kjetsaa_lists/", 
                  pattern = "^1983_.*?_bar.txt",
                  full.names = TRUE)
@@ -612,7 +642,7 @@ bar_lists <- tibble(
 glimpse(bar_lists)
 ```
 
-```{r}
+```{r, echo=T, include=F}
 bar_gr <- guiraud_coeff(AUTHOR = "Baratynskij E.A.",
                         N_POEMS = 245,
                         SAMPLE_SIZE = 38000,
@@ -627,7 +657,7 @@ bar_gr_int <- calculate_intersection(author_lists =  bar_lists,
 bar_gr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, echo=T, include=F}
 bar_lr <- log_odds_count(AUTHOR = "Baratynskij E.A.",
                          N_POEMS = 245,
                          SAMPLE_SIZE = 38000,
@@ -641,7 +671,7 @@ bar_lr_int <- calculate_intersection(author_lists =  bar_lists,
 bar_lr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 bar_zr <- zeta_count(AUTHOR = "Baratynskij E.A.",
                          N_POEMS = 245,
                          SAMPLE_SIZE = 38000,
@@ -655,7 +685,46 @@ bar_zr_int <- calculate_intersection(author_lists =  bar_lists,
 bar_zr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, include=T, echo=F}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- bar_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Baratynsky") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- bar_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Baratynsky") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- bar_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Baratynsky") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+bar_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(bar_wl, 3)
+
+bar_wl$word_list[5]
+```
+
+```{r, include=T, echo=F}
 plot_bar <- plot_author(guiraud_res = bar_gr_int, 
                          logodds_res = bar_lr_int,
                          zeta_res = bar_zr_int) + 
@@ -665,7 +734,7 @@ plot_bar <- plot_author(guiraud_res = bar_gr_int,
 plot_bar
 ```
 
-```{r}
+```{r, echo=F, include=F}
 x <- bar_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(bar_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -675,7 +744,7 @@ x <- bar_gr_int %>%
 global_res <- rbind(global_res, x)
 ```
 
-```{r}
+```{r, echo=F}
 rm(bar_gr, bar_lr, bar_zr)
 ```
 
@@ -685,7 +754,7 @@ max n poems: 385
 
 max n words: 33k
 
-```{r}
+```{r, echo=T, include=F}
 fl <- list.files(path = "../data/kjetsaa_lists/", 
                  pattern = "^1983_.*?_tjut.txt",
                  full.names = TRUE)
@@ -701,7 +770,7 @@ tjut_lists <- tibble(
 glimpse(tjut_lists)
 ```
 
-```{r}
+```{r, echo=T, include=F}
 tjut_gr <- guiraud_coeff(AUTHOR = "Tjutchev F.I.",
                         N_POEMS = 385,
                         SAMPLE_SIZE = 33000,
@@ -716,7 +785,7 @@ tjut_gr_int <- calculate_intersection(author_lists =  tjut_lists,
 tjut_gr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, echo=T, include=F}
 tjut_lr <- log_odds_count(AUTHOR = "Tjutchev F.I.",
                           N_POEMS = 385,
                           SAMPLE_SIZE = 33000,
@@ -730,7 +799,7 @@ tjut_lr_int <- calculate_intersection(author_lists = tjut_lists,
 head(tjut_lr_int)
 ```
 
-```{r}
+```{r, echo=T, include=F, message=F, warning=F}
 tjut_zr <- zeta_count(AUTHOR = "Tjutchev F.I.",
                       N_POEMS = 385,
                       SAMPLE_SIZE = 33000,
@@ -744,7 +813,46 @@ tjut_zr_int <- calculate_intersection(author_lists = tjut_lists,
 head(tjut_zr_int)
 ```
 
-```{r}
+```{r, include=T, echo=F}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- tjut_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Tjutchev") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- tjut_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Tjutchev") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- tjut_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Tjutchev") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+tjut_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(tjut_wl, 3)
+
+tjut_wl$word_list[5]
+```
+
+```{r, include=T, echo=F}
 plot_tjut <- plot_author(guiraud_res = tjut_gr_int, 
                          logodds_res = tjut_lr_int,
                          zeta_res = tjut_zr_int) + 
@@ -754,7 +862,7 @@ plot_tjut <- plot_author(guiraud_res = tjut_gr_int,
 plot_tjut
 ```
 
-```{r}
+```{r, include=F, echo=F}
 x <- tjut_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(tjut_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -764,7 +872,7 @@ x <- tjut_gr_int %>%
 global_res <- rbind(global_res, x)
 ```
 
-```{r}
+```{r, echo=F}
 rm(tjut_gr, tjut_lr, tjut_zr)
 ```
 
@@ -776,7 +884,7 @@ max n words: 75k
 
 Kjetsaa's corpus size: 36k
 
-```{r}
+```{r, include=F, echo=F}
 fl <- list.files(path = "../data/kjetsaa_lists/", 
                  pattern = "^1983_.*?_fet.txt",
                  full.names = TRUE)
@@ -792,7 +900,7 @@ fet_lists <- tibble(
 glimpse(fet_lists)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 fet_gr <- guiraud_coeff(AUTHOR = "Fet A.A.",
                         N_POEMS = 600,
                         SAMPLE_SIZE = 36000,
@@ -805,7 +913,7 @@ fet_gr_int <- calculate_intersection(author_lists = fet_lists,
 fet_gr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 fet_lr <- log_odds_count(AUTHOR = "Fet A.A.",
                         N_POEMS = 600,
                         SAMPLE_SIZE = 36000,
@@ -818,7 +926,7 @@ fet_lr_int <- calculate_intersection(author_lists = fet_lists,
 fet_lr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 fet_zr <- zeta_count(AUTHOR = "Fet A.A.",
                         N_POEMS = 600,
                         SAMPLE_SIZE = 36000,
@@ -831,7 +939,46 @@ fet_zr_int <- calculate_intersection(author_lists = fet_lists,
 fet_zr_int %>% sample_n(10)
 ```
 
-```{r}
+```{r, include=T, echo=F}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- fet_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Fet") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- fet_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Fet") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- fet_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Fet") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+fet_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(fet_wl, 3)
+
+fet_wl$word_list[5]
+```
+
+```{r, include=T, echo=F}
 plot_fet <- plot_author(guiraud_res = fet_gr_int, 
                          logodds_res = fet_lr_int,
                          zeta_res = fet_zr_int) + labs(title = "Fet A.A.")
@@ -840,16 +987,37 @@ plot_fet <- plot_author(guiraud_res = fet_gr_int,
 plot_fet 
 ```
 
-```{r}
+```{r, include=F, echo=F}
 x <- fet_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(fet_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
     rbind(fet_zr_int %>% mutate(group = "Zeta")) %>% 
     mutate(author = "Fet A.A.")
 
+# save data on the intersections
+
 global_res <- rbind(global_res, x)
 
 saveRDS(global_res, file = "../data/keywords_res_kjetsaa_norm.rds")
+```
+
+```{r, include=F, echo=F}
+# save the wordlists
+
+global_wl <- rbind(lerm_wl,
+                   bar_wl,
+                   tjut_wl,
+                   fet_wl) %>% 
+  mutate(pos = ifelse(pos == "A", "ADJ", pos),
+         pos = ifelse(pos == "V", "VERB", pos),
+         pos = ifelse(pos == "S", "NOUN", pos))
+
+global_wl %>% 
+  count(author, measure, pos) # should be n (iter=word lists) = 100
+
+sample_n(global_wl, 5)
+
+write_csv(global_wl, "../data/kjetsaa_wordlists_kjetsaa-norm.csv")
 ```
 
 ## merge plot
@@ -858,14 +1026,14 @@ saveRDS(global_res, file = "../data/keywords_res_kjetsaa_norm.rds")
 plot_grid(plot_lerm, plot_bar, plot_tjut, plot_fet,
           nrow = 1)
 
-ggsave(filename = "../plots/fig_3_kjetsaa_norm.png", 
-       plot = last_plot(), dpi = 300, bg = "white",
-       width = 15, height = 10)
+# ggsave(filename = "../plots/fig_3_kjetsaa_norm.png", 
+#        plot = last_plot(), dpi = 300, bg = "white",
+#        width = 15, height = 10)
 ```
 
 ## analyse keywords
 
-```{r}
+```{r, echo=F, eval=F}
 res_k <- readRDS("../data/keywords_res_kjetsaa_norm.rds")
 
 glimpse(res_k)
@@ -873,7 +1041,7 @@ glimpse(res_k)
 
 N words of different pos in 4 authors & top-freq words
 
-```{r}
+```{r, echo=F, eval=F}
 corpus %>% 
   filter(author_name %in% c("Lermontov M.Ju.", "Baratynskij E.A.",
                             "Tjutchev F.I.", "Fet A.A.")) %>% 
@@ -881,7 +1049,7 @@ corpus %>%
   count(author_name, pos)
 ```
 
-```{r}
+```{r, echo=F, eval=F}
 freq_l <- corpus %>% 
   filter(author_name %in% c("Lermontov M.Ju.")) %>% 
   filter(pos %in% c("A", "S", "V")) %>% 
@@ -919,7 +1087,7 @@ res_k %>%
   arrange(-desc(pos))
 ```
 
-```{r}
+```{r, echo=F, eval=F}
 freq_b <- corpus %>% 
   filter(author_name %in% c("Baratynskij E.A.")) %>% 
   filter(pos %in% c("A", "S", "V")) %>% 
@@ -957,7 +1125,7 @@ res_k %>%
   arrange(-desc(pos))
 ```
 
-```{r}
+```{r, echo=F, eval=F}
 freq_t <- corpus %>% 
   filter(author_name %in% c("Tjutchev F.I.")) %>% 
   filter(pos %in% c("A", "S", "V")) %>% 
@@ -995,7 +1163,7 @@ res_k %>%
   arrange(-desc(pos))
 ```
 
-```{r}
+```{r, echo=F, eval=F}
 freq_f <- corpus %>% 
   filter(author_name %in% c("Fet A.A.")) %>% 
   filter(pos %in% c("A", "S", "V")) %>% 
@@ -1039,7 +1207,7 @@ Same experiment with a larger contrast corpus
 
 ### Lerm
 
-```{r}
+```{r, include=F, echo=T}
 # LERMONTOV
 
 lerm_gr <- guiraud_coeff(AUTHOR = "Lermontov M.Ju.", 
@@ -1052,9 +1220,9 @@ lerm_gr_int <- calculate_intersection(author_lists = lerm_lists,
                                       results_df = lerm_gr)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 lerm_lr <- log_odds_count(AUTHOR = "Lermontov M.Ju.",
-                          N_POEMS = 280,
+                          N_POEMS = 270,
                           SAMPLE_SIZE = 43000,
                           NORM = "5k")
 
@@ -1062,17 +1230,57 @@ lerm_lr_int <- calculate_intersection(author_lists = lerm_lists,
                                       results_df = lerm_lr)
 ```
 
-```{r}
+```{r, include=F, echo=T, message=F, warning=F}
 lerm_zr <- zeta_count(AUTHOR = "Lermontov M.Ju.",
                       N_POEMS = 270,
                       SAMPLE_SIZE = 43000,
                       NORM = "5k")
+head(lerm_zr)
 
 lerm_zr_int <- calculate_intersection(author_lists = lerm_lists, 
                                       results_df = lerm_zr)
 ```
 
-```{r}
+```{r, include=T, echo=T}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- lerm_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Lermontov") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- lerm_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Lermontov") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- lerm_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Lermontov") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+lerm_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(lerm_wl, 3)
+
+lerm_wl$word_list[3]
+```
+
+```{r, include=T, echo=F}
 plot_lerm <- plot_author(guiraud_res = lerm_gr_int, 
                          logodds_res = lerm_lr_int,
                          zeta_res = lerm_zr_int) + 
@@ -1082,7 +1290,7 @@ plot_lerm <- plot_author(guiraud_res = lerm_gr_int,
 plot_lerm
 ```
 
-```{r}
+```{r, include=F, echo=F}
 x <- lerm_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(lerm_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -1095,9 +1303,9 @@ global_res <- rbind(global_res, x)
 rm(lerm_gr, lerm_lr, lerm_zr, x)
 ```
 
-### Bar
+### Baratynsky
 
-```{r}
+```{r, include=F, echo=T}
 bar_gr <- guiraud_coeff(AUTHOR = "Baratynskij E.A.",
                         N_POEMS = 245,
                         SAMPLE_SIZE = 38000,
@@ -1108,7 +1316,7 @@ bar_gr_int <- calculate_intersection(author_lists =  bar_lists,
                                      results_df = bar_gr)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 bar_lr <- log_odds_count(AUTHOR = "Baratynskij E.A.",
                          N_POEMS = 245,
                          SAMPLE_SIZE = 38000,
@@ -1118,7 +1326,7 @@ bar_lr_int <- calculate_intersection(author_lists =  bar_lists,
                                      results_df = bar_lr)
 ```
 
-```{r}
+```{r, include=F, echo=T, message=FALSE, warning=FALSE}
 bar_zr <- zeta_count(AUTHOR = "Baratynskij E.A.",
                          N_POEMS = 245,
                          SAMPLE_SIZE = 38000,
@@ -1128,7 +1336,46 @@ bar_zr_int <- calculate_intersection(author_lists =  bar_lists,
                                      results_df = bar_zr)
 ```
 
-```{r}
+```{r, include=T, echo=F}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- bar_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Baratynsky") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- bar_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Baratynsky") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- bar_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Baratynsky") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+bar_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(bar_wl, 3)
+
+bar_wl$word_list[5]
+```
+
+```{r, include=T, echo=F}
 plot_bar <- plot_author(guiraud_res = bar_gr_int, 
                          logodds_res = bar_lr_int,
                          zeta_res = bar_zr_int) + 
@@ -1138,7 +1385,7 @@ plot_bar <- plot_author(guiraud_res = bar_gr_int,
 plot_bar
 ```
 
-```{r}
+```{r, include=F, echo=F}
 x <- bar_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(bar_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -1152,7 +1399,7 @@ rm(bar_gr, bar_lr, bar_zr)
 
 ### Tjut
 
-```{r}
+```{r, include=F, echo=T}
 tjut_gr <- guiraud_coeff(AUTHOR = "Tjutchev F.I.",
                         N_POEMS = 385,
                         SAMPLE_SIZE = 33000,
@@ -1163,7 +1410,7 @@ tjut_gr_int <- calculate_intersection(author_lists =  tjut_lists,
                                      results_df = tjut_gr)
 ```
 
-```{r}
+```{r, include=F, echo=T}
 tjut_lr <- log_odds_count(AUTHOR = "Tjutchev F.I.",
                           N_POEMS = 385,
                           SAMPLE_SIZE = 33000,
@@ -1173,7 +1420,7 @@ tjut_lr_int <- calculate_intersection(author_lists = tjut_lists,
                                       results_df = tjut_lr)
 ```
 
-```{r}
+```{r, include=F, echo=T, message=F, warning=F}
 tjut_zr <- zeta_count(AUTHOR = "Tjutchev F.I.",
                       N_POEMS = 385,
                       SAMPLE_SIZE = 33000,
@@ -1183,7 +1430,47 @@ tjut_zr_int <- calculate_intersection(author_lists = tjut_lists,
                                       results_df = tjut_zr)
 ```
 
-```{r}
+```{r, include=F, echo=F}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- tjut_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Tjutchev") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- tjut_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Tjutchev") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- tjut_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Tjutchev") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+tjut_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(tjut_wl, 3)
+
+tjut_wl$word_list[5]
+
+```
+
+```{r, include=T, echo=F}
 plot_tjut <- plot_author(guiraud_res = tjut_gr_int, 
                          logodds_res = tjut_lr_int,
                          zeta_res = tjut_zr_int) + 
@@ -1193,7 +1480,7 @@ plot_tjut <- plot_author(guiraud_res = tjut_gr_int,
 plot_tjut
 ```
 
-```{r}
+```{r, include=F, echo=F}
 x <- tjut_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(tjut_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -1207,7 +1494,7 @@ rm(tjut_gr, tjut_lr, tjut_zr)
 
 ### Fet
 
-```{r}
+```{r, include=F, echo=T}
 fet_gr <- guiraud_coeff(AUTHOR = "Fet A.A.",
                         N_POEMS = 600,
                         SAMPLE_SIZE = 36000,
@@ -1217,7 +1504,7 @@ fet_gr_int <- calculate_intersection(author_lists = fet_lists,
                                      results_df = fet_gr)
 ```
 
-```{r}
+```{r, include=F, echo = T}
 fet_lr <- log_odds_count(AUTHOR = "Fet A.A.",
                         N_POEMS = 600,
                         SAMPLE_SIZE = 36000,
@@ -1227,7 +1514,7 @@ fet_lr_int <- calculate_intersection(author_lists = fet_lists,
                                      results_df = fet_lr)
 ```
 
-```{r}
+```{r, include=F, echo=T, warning=F, message=F}
 fet_zr <- zeta_count(AUTHOR = "Fet A.A.",
                         N_POEMS = 600,
                         SAMPLE_SIZE = 36000,
@@ -1237,7 +1524,46 @@ fet_zr_int <- calculate_intersection(author_lists = fet_lists,
                                      results_df = fet_zr)
 ```
 
-```{r}
+```{r, include=T, echo=F}
+# create the outputs as 1 row = 1 word list (10 words)
+# keep info about the author, measure, and POS
+
+gr_wl <- fet_gr %>% 
+  mutate(measure = "Guiraud", 
+         author = "Fet") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct() 
+
+lr_wl <- fet_lr %>% 
+  mutate(measure = "Log odds",
+         author = "Fet") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+zr_wl <- fet_zr %>% 
+  mutate(measure = "Zeta",
+         author = "Fet") %>% 
+  select(author, measure, run, pos, lemma) %>% 
+  group_by(author, measure, run, pos) %>% 
+  summarise(word_list = paste(lemma, collapse = " "),
+            .groups = "drop") %>% 
+  distinct()
+
+# merge the measures
+fet_wl <- rbind(gr_wl, lr_wl, zr_wl)
+
+sample_n(fet_wl, 3)
+
+fet_wl$word_list[5]
+```
+
+```{r, include=T, echo=F}
 plot_fet <- plot_author(guiraud_res = fet_gr_int, 
                          logodds_res = fet_lr_int,
                          zeta_res = fet_zr_int) + labs(title = "Fet A.A.")
@@ -1246,7 +1572,7 @@ plot_fet <- plot_author(guiraud_res = fet_gr_int,
 plot_fet 
 ```
 
-```{r}
+```{r, include=F, echo=F}
 x <- fet_gr_int %>% 
     mutate(group = "Guiraud\ncoeff.") %>% 
     rbind(fet_lr_int %>% mutate(group = "Weighted\nlog odds\nratio")) %>% 
@@ -1258,13 +1584,32 @@ global_res <- rbind(global_res, x)
 saveRDS(global_res, file = "../data/keywords_res_5k_norm.rds")
 ```
 
+```{r, include=F, echo=F}
+# save the wordlists
+
+global_wl <- rbind(lerm_wl,
+                   bar_wl,
+                   tjut_wl,
+                   fet_wl) %>% 
+  mutate(pos = ifelse(pos == "A", "ADJ", pos),
+         pos = ifelse(pos == "V", "VERB", pos),
+         pos = ifelse(pos == "S", "NOUN", pos))
+
+global_wl %>% 
+  count(author, measure, pos) # should be n (iter=word lists) = 100
+
+sample_n(global_wl, 5)
+
+# write_csv(global_wl, "../data/kjetsaa_wordlists_5k.csv")
+```
+
 ### merged plot
 
-```{r}
+```{r, include=T, echo=F}
 plot_grid(plot_lerm, plot_bar, plot_tjut, plot_fet,
           nrow = 1)
 
-ggsave(filename = "../plots/fig_3_5k_norm.png", 
-       plot = last_plot(), dpi = 300, bg = "white",
-       width = 15, height = 10)
+# ggsave(filename = "../plots/fig_3_5k_norm.png", 
+#        plot = last_plot(), dpi = 300, bg = "white",
+#        width = 15, height = 10)
 ```
