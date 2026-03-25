@@ -1031,6 +1031,80 @@ plot_grid(plot_lerm, plot_bar, plot_tjut, plot_fet,
 #        width = 15, height = 10)
 ```
 
+## random lists
+
+Output lists of randomly selected nouns, adj, and verbs
+
+```{r}
+lerm_pos <- corpus %>% 
+  filter(author_name == "Lermontov M.Ju.") %>% 
+  filter(pos %in% c("S", "V", "A")) %>% 
+  group_by(pos) %>% 
+  sample_n(size = 1000) %>% 
+  mutate(sample_id = ceiling(row_number() / 10)) %>% 
+  ungroup() %>% 
+  select(author_name, lemma, pos, sample_id) %>% 
+  group_by(pos, sample_id) %>% 
+  mutate(word_list = paste(lemma, collapse = " ")) %>% 
+  ungroup() %>% 
+  select(-c(lemma)) %>% 
+  distinct()
+
+unique(corpus$author_name)
+
+bar_pos <- corpus %>% 
+  filter(author_name == "Baratynskij E.A.") %>% 
+  filter(pos %in% c("S", "V", "A")) %>% 
+  group_by(pos) %>% 
+  sample_n(size = 1000) %>% 
+  mutate(sample_id = ceiling(row_number() / 10)) %>% 
+  ungroup() %>% 
+  select(author_name, lemma, pos, sample_id) %>% 
+  group_by(pos, sample_id) %>% 
+  mutate(word_list = paste(lemma, collapse = " ")) %>% 
+  ungroup() %>% 
+  select(-c(lemma)) %>% 
+  distinct()
+
+tjut_pos <- corpus %>% 
+  filter(author_name == "Tjutchev F.I.") %>% 
+  filter(pos %in% c("S", "V", "A")) %>% 
+  group_by(pos) %>% 
+  sample_n(size = 1000) %>% 
+  mutate(sample_id = ceiling(row_number() / 10)) %>% 
+  ungroup() %>% 
+  select(author_name, lemma, pos, sample_id) %>% 
+  group_by(pos, sample_id) %>% 
+  mutate(word_list = paste(lemma, collapse = " ")) %>% 
+  ungroup() %>% 
+  select(-c(lemma)) %>% 
+  distinct()
+
+fet_pos <- corpus %>% 
+  filter(author_name == "Fet A.A.") %>% 
+  filter(pos %in% c("S", "V", "A")) %>% 
+  group_by(pos) %>% 
+  sample_n(size = 1000) %>% 
+  mutate(sample_id = ceiling(row_number() / 10)) %>% 
+  ungroup() %>% 
+  select(author_name, lemma, pos, sample_id) %>% 
+  group_by(pos, sample_id) %>% 
+  mutate(word_list = paste(lemma, collapse = " ")) %>% 
+  ungroup() %>% 
+  select(-c(lemma)) %>% 
+  distinct()
+
+random_lists <- rbind(lerm_pos,
+                      bar_pos,
+                      tjut_pos, 
+                      fet_pos)
+
+random_lists %>% 
+  count(pos, author_name)
+
+write_csv(random_lists, "../data/random_lists.csv")
+```
+
 ## analyse keywords
 
 ```{r, echo=F, eval=F}
