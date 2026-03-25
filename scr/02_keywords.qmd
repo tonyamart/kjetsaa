@@ -1097,10 +1097,27 @@ fet_pos <- corpus %>%
 random_lists <- rbind(lerm_pos,
                       bar_pos,
                       tjut_pos, 
-                      fet_pos)
+                      fet_pos) 
+
+  # simple pos translation table
+pos_transl <- tibble(
+  pos = c("A", "S", "V"),
+  pos_tag = c("ADJ", "NOUN", "VERB")
+)
+
+
+random_lists <- random_lists %>% 
+  left_join(pos_transl, by = "pos") %>% 
+  select(-pos) %>% 
+  rename(pos = pos_tag, 
+         run = sample_id,
+         author = author_name) %>% 
+  select(author, run, pos, word_list)
+
+head(random_lists)
 
 random_lists %>% 
-  count(pos, author_name)
+  count(pos, author)
 
 write_csv(random_lists, "../data/random_lists.csv")
 ```
