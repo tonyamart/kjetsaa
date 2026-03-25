@@ -161,61 +161,27 @@ Load prepared data
 ### poetree
 
 ```{r}
-poetree_ru <- read.csv("../data/poetree_ru_19c.csv") %>% select(-X)
+poetree_ru <- read.csv("../data/large_poetree_ru_19c_lemma.csv")
 
 glimpse(poetree_ru)
-```
-
-Count number of lines & words
-
-```{r}
-# number of lines per author
-poetree_ru %>% 
-  # remove all multiple newlines
-  mutate(poem_text = str_replace_all(poem_text, "\\n{2,}", "\n")) %>% 
-  group_by(id_poem) %>% 
-  summarise(
-    author = author_name,
-    n_lines = str_count(poem_text, "\n")+1,
-    .groups = "drop"
-  ) %>% 
-  group_by(author) %>% 
-  summarise(n_lines_total = sum(n_lines),
-            .groups = "drop")
-
-poetree_ru %>% 
-  # remove all multiple newlines
-  mutate(poem_text = str_replace_all(poem_text, "\\n{2,}", "\n")) %>% 
-  group_by(id_poem) %>% 
-  summarise(
-    author = author_name,
-    n_lines = str_count(poem_text, "\n")+1,
-    .groups = "drop"
-  ) %>% 
-  summarise(sum(n_lines)) # total number of lines
 ```
 
 Load lemmatized data for word counting
 
 ```{r}
-poetree_lemma <- read.csv("../data/poetree_ru_19c_lemma.csv") %>% select(-X)
-
-glimpse(poetree_lemma)
-```
-
-```{r}
-poetree_lemma %>% 
+poetree_ru %>% 
   count(lemma) %>% nrow()
 ```
 
 Proportion of words written by each author
 
 ```{r}
-poetree_lemma %>% 
+poetree_ru %>% 
+  select(author_name, lemma) %>% 
   group_by(author_name) %>% 
   count(sort = T) %>% 
   ungroup() %>% 
-  mutate(perc = round(n / nrow(poetree_lemma) * 100, 1))
+  mutate(perc = round(n / nrow(poetree_ru) * 100, 1))
 ```
 
 ### Kjetsaa's norm corpus
