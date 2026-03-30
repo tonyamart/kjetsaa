@@ -1704,3 +1704,422 @@ plot_grid(plot_lerm, plot_bar, plot_tjut, plot_fet,
 #        plot = last_plot(), dpi = 300, bg = "white",
 #        width = 15, height = 10)
 ```
+
+# III. lists closeness
+
+Get the keyword lists with centroids took from BERT model
+
+fn 1 : parse python lists & transform to matrix
+
+```{r}
+# fn to parse lists with centroids
+parse_unquoted_list <- function(col) {
+  str_extract_all(col, "[^,\\[\\]\\s]+") %>% 
+    map(identity)
+}
+
+
+# fn to transform to matrix
+# df_centroid: table with columns c(author, run, measure, pos centroid)
+transform_matrix <- function(df_centroid) {
+  
+  # extract python vectors (separate elements inside centroid string)
+  # then unnest the resulting lists: got longdf with 1 row = 1 dimension
+  x <- df_centroid %>% 
+    mutate(
+      # parse lists
+      centroids = parse_unquoted_list(centroid)
+    ) %>% 
+    # turn lists to long table
+    unnest(centroids) %>% 
+    select(-c(centroid, word_list, n_known))
+  
+  # pivot to wide table
+  x_wide <- x %>% 
+    group_by(author, measure, run, pos) %>% 
+    mutate(dimension = row_number()) %>% # index of 1 to 300 dimensions
+    ungroup() %>% 
+    mutate(centroids = as.numeric(centroids)) %>% 
+    pivot_wider(
+      names_from = dimension,
+      names_prefix = "d_",
+      values_from = centroids
+    )
+  
+  return(x_wide)
+}
+
+
+```
+
+fn 2 : calculate cosine similarity for each group (author-pos)
+
+```{r}
+# fn to calculate cosine sim
+cosine_matrix <- function(mat) {
+  # mat -- numberic matrix with rows=word lists, cols = 300 dims
+  
+  # rowSums(mat^2) - sum of squared values per row
+  # then we take sqrt from this sum
+  norms <- sqrt(rowSums(mat^2))
+  
+  # divide each row by its own norm to make all vectors same size (1)
+  normed <- mat / norms
+  
+  # t() - transpose: flip rows & cols, from n x 300 to 300 x n
+  # %*% is matrix multiplication: (n x 300) %*% (300 x n) = (n x n)
+  # each cell is the dot product = cosine similarity
+  normed %*% t(normed)
+}
+
+# fn to calc the cos_sim for each group
+# mat is the matrix with 4 meta cols + 300 dim centr
+# groups : the author_pos groups we want to look into
+grouped_cos_sim <- function(mat, groups) {
+  
+  res_all <- data.frame()
+  
+  # for each group, build the cos-sim matrix
+  for (i in 1:nrow(groups)) {
+    
+    # subset current group
+    grp <- mat %>% 
+      filter(author == groups$author[i], pos == groups$pos[i])
+    
+    # pull real matrix
+    mtrx <- grp %>% 
+      select(starts_with("d")) %>% 
+      as.matrix()
+    
+    # assign rownames back
+    rownames(mtrx) <- paste(grp$measure, grp$pos, grp$run, sep = "_")
+    
+    # calculate cosine similarity
+    sim_matrix <- cosine_matrix(mtrx)
+    
+    # sim_matrix[1:5, 1:5] # first look at the matrix
+    
+    # transform back to long df
+    res <- sim_matrix %>% 
+      as.data.frame() %>% 
+      rownames_to_column("run_a") %>% 
+      pivot_longer(
+        cols = -run_a,
+        names_to = "run_b",
+        values_to = "cosine_sim"
+      ) %>% 
+      # drop diagonal and lower triangle
+      # filter(run_a < run_b) %>% 
+      # add data about the group
+      mutate(author = groups$author[i],
+             pos = groups$pos[i])
+    
+    res_all <- rbind(res_all, res)
+  }
+  
+  return(res_all)
+}
+```
+
+fn 3 : plots
+
+```{r}
+
+# helpers for groups relabelling
+
+safe_breaks <- function(x, step = 100, offset = 50) {
+  n <- length(x)
+  if (n < offset) return(x)  # fallback: just return what exists
+  idx <- seq(offset, n, by = step)
+  x[idx]
+}
+
+safe_labels <- function(x, step = 100, offset = 50) {
+  n <- length(x)
+  if (n < offset) return(stringr::str_extract(x, "^[^_]+"))
+  idx <- seq(offset, n, by = step)
+  stringr::str_extract(x[idx], "^[^_]+")
+}
+
+
+# plot function
+
+plot_tiles <- function(df_results, plot_title = "") { 
+
+  df_results %>%
+    mutate(
+      
+      measure_a = str_extract(run_a, "^[^_]+"),
+      measure_b = str_extract(run_b, "^[^_]+"),
+      # sort runs so same-measure runs are adjacent
+      run_a = factor(run_a, levels = unique(run_a[order(measure_a)])),
+      run_b = factor(run_b, levels = unique(run_b[order(measure_b)])),
+      
+      facet = paste(author, pos)
+    ) %>% 
+    
+    ggplot(aes(run_a, run_b, fill = cosine_sim)) +
+    geom_tile() + 
+    facet_wrap(~facet, scales = "free", ncol = 3) + 
+    scale_fill_viridis_c( limits = c(-1.0, 1.000001),
+                         option = "magma",
+                         na.value = "red") + 
+    
+    # replace individual run labels with measure names
+    scale_x_discrete(
+      breaks = safe_breaks,
+      labels = safe_labels
+    ) +
+    scale_y_discrete(
+      breaks = safe_breaks,
+      labels = safe_labels
+    ) + 
+    theme_minimal() +
+    theme(panel.grid = element_blank()) +
+    labs(x = "", y = "", 
+         title = plot_title)
+}
+  
+# limits and floating point issues: some results were 1.000000001  
+# range(res_test$cosine_sim, na.rm = FALSE)
+# 
+# sum(res_test$cosine_sim > 1)
+# max(res_test$cosine_sim) - 1
+
+# summary plot 3:3
+plot_summary <- function(df_res, plot_title = "") {
+    p_s <- df_res %>% 
+      mutate(
+        facet = paste(author, pos),
+        measure_a = str_extract(run_a, "^[^_]+"),
+        measure_b = str_extract(run_b, "^[^_]+")
+      ) %>% 
+      group_by(facet, measure_a, measure_b) %>% 
+      summarise(
+        mean_sim = mean(cosine_sim),
+        sd_sim = sd(cosine_sim),
+        .groups = "drop"
+      ) %>% 
+      ggplot(aes(measure_a, measure_b, fill = mean_sim)) + 
+      geom_tile() + 
+      geom_text(aes(label = round(mean_sim, 2)), size = 3) + 
+      facet_wrap(~facet) + 
+      scale_fill_viridis_c( option = "magma",
+        limits = c(-1, 1.00000001)) + 
+      labs(x = NULL, y = NULL, 
+           title = plot_title)
+  
+  return(p_s)
+}
+```
+
+### Kjetsaa's Norm centroids
+
+Load Kjetsaa's list as ref corpus
+
+```{r}
+k_centroids <- read_csv("../data/centroids_kjetsaa_wordlists_kjetsaa-norm.csv")
+
+glimpse(k_centroids)
+
+k_centroids %>%
+  mutate(facet = paste(author, pos)) %>% 
+  ggplot(aes(x = measure, y = n_known)) + 
+  geom_boxplot() + 
+  facet_wrap(~facet, ncol=3)
+```
+
+```{r}
+k_mat <- transform_matrix(k_centroids)
+
+k_mat[1:5, 1:10]
+dim(k_mat)
+```
+
+```{r}
+k_groups <- k_mat %>% distinct(author, pos)
+
+k_res <- grouped_cos_sim(k_mat, k_groups)
+
+glimpse(k_res)
+
+range(k_res$cosine_sim, na.rm = FALSE)
+```
+
+```{r}
+plot_tiles(k_res, plot_title = "Kjetsaa's Norm as the reference corpus")
+
+ggsave("../plots/hm_kjetsaa.png",
+       plot = last_plot(),
+       bg = "white", dpi = 300,
+       width = 15, height = 10)
+```
+
+Summary
+
+```{r}
+plot_summary(k_res, 
+             plot_title = "Kjetsaa's Norm as the reference corpus")
+
+ggsave("../plots/listsim_kjetsaa.png", 
+       plot = last_plot(), 
+       bg = "white", dpi = 300,
+       width = 8, height = 6)
+```
+
+```{r}
+k_res %>% 
+  group_by(author) %>% 
+  summarise(author_mean_sim = mean(cosine_sim))
+
+k_res %>% 
+  group_by(pos) %>% 
+  summarise(mean_sim = mean(cosine_sim))
+
+k_res %>% 
+  mutate(measure_a = str_extract(run_a, "^[^_]+"),
+        measure_b = str_extract(run_b, "^[^_]+"),
+        facet = paste(measure_a, measure_b)) %>% 
+  group_by(facet) %>% 
+  summarise(mean_sim = mean(cosine_sim))
+```
+
+### boostr centroids
+
+```{r}
+b_centroids <- read_csv("../data/centroids_kjetsaa_wordlists_5k.csv")
+
+glimpse(b_centroids)
+
+b_centroids %>%
+  mutate(facet = paste(author, pos)) %>% 
+  ggplot(aes(x = measure, y = n_known)) + 
+  geom_boxplot() + 
+  facet_wrap(~facet, ncol=3)
+```
+
+```{r}
+b_mat <- transform_matrix(b_centroids)
+
+b_mat[1:5, 1:10]
+dim(b_mat)
+
+b_groups <- b_mat %>% distinct(author, pos)
+
+b_res <- grouped_cos_sim(b_mat, b_groups)
+
+glimpse(b_res)
+
+range(b_res$cosine_sim, na.rm = FALSE)
+```
+
+```{r}
+plot_tiles(b_res, plot_title = "Bootstrapped 5k as the reference corpus")
+
+ggsave("../plots/hm_5k.png",
+       plot = last_plot(),
+       bg = "white", dpi = 300,
+       width = 15, height = 10)
+```
+
+```{r}
+plot_summary(b_res, 
+             plot_title = "Bootstrapped 5k as the reference corpus")
+
+ggsave("../plots/listsim_5k.png", 
+       plot = last_plot(), 
+       bg = "white", dpi = 300,
+       width = 8, height = 6)
+```
+
+```{r}
+b_res %>% 
+  group_by(author) %>% 
+  summarise(author_mean_sim = mean(cosine_sim))
+
+b_res %>% 
+  group_by(pos) %>% 
+  summarise(mean_sim = mean(cosine_sim))
+
+b_res %>% 
+  mutate(measure_a = str_extract(run_a, "^[^_]+"),
+        measure_b = str_extract(run_b, "^[^_]+"),
+        facet = paste(measure_a, measure_b)) %>% 
+  group_by(facet) %>% 
+  summarise(mean_sim = mean(cosine_sim))
+```
+
+### random lists
+
+```{r}
+r_centroids <- read_csv("../data/centroids_random_lists.csv")
+
+glimpse(r_centroids)
+
+r_centroids %>%
+  mutate(facet = paste(author, pos)) %>% 
+  ggplot(aes(y = n_known)) + 
+  geom_boxplot() + 
+  facet_wrap(~facet, ncol=3)
+```
+
+```{r}
+# added fake measure groups
+r_centroids <- r_centroids %>% 
+  mutate(measure = "random",
+         group = ceiling(run / 25),
+         group = paste0(measure, "_", group))
+
+r_centroids %>% count(author, group, pos)
+```
+
+```{r}
+r_mat <- transform_matrix(r_centroids)
+
+r_mat[1:5, 1:10]
+dim(r_mat)
+
+r_groups <- r_mat %>% distinct(author, pos)
+
+r_res <- grouped_cos_sim(r_mat, r_groups)
+
+glimpse(r_res)
+
+range(r_res$cosine_sim, na.rm = FALSE)
+```
+
+```{r}
+plot_tiles(r_res, plot_title = "Random lists")
+
+ggsave("../plots/hm_random.png",
+       plot = last_plot(),
+       bg = "white", dpi = 300,
+       width = 15, height = 10)
+```
+
+```{r}
+plot_summary(r_res, 
+             plot_title = "Random lists")
+
+ggsave("../plots/listsim_rand.png", 
+       plot = last_plot(), 
+       bg = "white", dpi = 300,
+       width = 8, height = 6)
+```
+
+```{r}
+r_res %>% 
+  group_by(author) %>% 
+  summarise(author_mean_sim = mean(cosine_sim))
+
+r_res %>% 
+  group_by(pos) %>% 
+  summarise(mean_sim = mean(cosine_sim))
+
+r_res %>% 
+  mutate(measure_a = str_extract(run_a, "^[^_]+"),
+        measure_b = str_extract(run_b, "^[^_]+"),
+        facet = paste(measure_a, measure_b)) %>% 
+  group_by(facet) %>% 
+  summarise(mean_sim = mean(cosine_sim))
+```
