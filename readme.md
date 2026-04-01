@@ -5,6 +5,7 @@ This reposiroty contains code and data for the paper "Keywords on Mainframes: Re
 The repository contains reproduced corpus of poems (based on Kjetsaa's bibliography) as well as R code scripts to replicate and reinvestigate Kjetsaa's original studies.
 
 ## Repository Structure
+```
 .
 ├── data/                     # Core datasets and replication materials
 │   ├── cntrds/               # Keyword lists derived from ruBERT centroids
@@ -24,3 +25,4 @@ The repository contains reproduced corpus of poems (based on Kjetsaa's bibliogra
 ├── 				          # 
 └── 		                  # 
 
+```
