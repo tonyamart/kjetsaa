@@ -27,7 +27,7 @@ poetree_authors
 
 Get texts ids using authors' ids
 
-```{r, include=F, echo=T}
+```{r, echo=T, results='hide'}
 poem_ids <- get_poems(corpus = "ru", authors = poetree_authors$id_)
 
 glimpse(poem_ids)
@@ -35,7 +35,7 @@ glimpse(poem_ids)
 
 Get texts
 
-```{r, eval = F, include=F, echo=T}
+```{r, eval = F, echo=T}
 vec_ids <- poem_ids$id_[1:3]
 
 head(vec_ids) 
@@ -57,7 +57,7 @@ glimpse(texts)
 
 Check errors
 
-```{r, eval=F, include=F, echo=T}
+```{r, eval=F, echo=T}
 errors <- texts %>% 
   filter(!is.na(error)) %>% 
   pull(poem_id)
@@ -95,14 +95,14 @@ glimpse(ru_poetree)
 
 Tokenization
 
-```{r, eval=F, echo=T, include=F}
+```{r, eval=F, echo=T}
 ru_poetree_tokens <- ru_poetree %>% 
   unnest_tokens(input = poem_text, output = word, token = "words")
 ```
 
 Write data
 
-```{r, eval = FALSE, echo=T, include=F}
+```{r, eval = FALSE, echo=T}
 #write.csv(ru_poetree, file = "../data/large_poetree_ru_19c.csv") # full texts
 write.csv(ru_poetree_tokens, file = "../data/large_poetree_ru_19c_tokens.csv") # tokenized
 ```
@@ -124,7 +124,7 @@ glimpse(kjetsaa)
 
 Add author names transliteration
 
-```{r, eval=F, include=F, echo=T}
+```{r, eval=F, echo=T}
 # load prepared poetree data if needed
 # ru_poetree <- read.csv("../data/poetree_ru_1810-1839.csv")
 
@@ -147,7 +147,7 @@ authors_translit
 
 Attach transliterated names and tokenize
 
-```{r, eval=F, include=F, echo=T}
+```{r, eval=F, echo=T}
 kjetsaa_tokens <- kjetsaa %>% 
   rename(author_name_ru = author) %>% 
   left_join(authors_translit, by = "author_name_ru") %>% 
@@ -156,7 +156,7 @@ kjetsaa_tokens <- kjetsaa %>%
 
 Write tokenized df  –\> to be lemmatized with `00_lemmatization.ipynb`
 
-```{r, eval = F, echo=T, include=F}
+```{r, eval = F, echo=T}
 write.csv(kjetsaa_tokens, file = "../data/kjetsaa_norm_tokens.csv")
 ```
 

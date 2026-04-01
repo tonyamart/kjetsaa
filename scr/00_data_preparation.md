@@ -16,7 +16,7 @@ poetree_authors <- get_authors(corpus = "ru") %>%
 poetree_authors
 ```
 
-    # A tibble: 21 × 2
+    # A tibble: 21 x 2
          id_ name                     
        <int> <chr>                    
      1   366 Baratynskij E.A.         
@@ -29,17 +29,62 @@ poetree_authors
      8   201 Homjakov A.S.            
      9   284 Jazykov N.M.             
     10   268 Kjuhelbeker V.K.         
-    # ℹ 11 more rows
+    # i 11 more rows
 
 Get texts ids using authors’ ids
 
+``` r
+poem_ids <- get_poems(corpus = "ru", authors = poetree_authors$id_)
+
+glimpse(poem_ids)
+```
+
 Get texts
+
+``` r
+vec_ids <- poem_ids$id_[1:3]
+
+head(vec_ids) 
+length(vec_ids) # 4842 poems
+
+# call each text separately with lapply + catch errors where the function stopped
+texts_list <- lapply(vec_ids, function(id){
+  tryCatch( # try except
+    get_text(corpus = "ru", poem_id = id),
+    error = function(e) tibble(error = e$message, poem_id = id) 
+    # if error attach info to relevant columns
+  )
+})
+
+texts <- bind_rows(texts_list)
+
+glimpse(texts)
+```
 
 Check errors
 
+``` r
+errors <- texts %>% 
+  filter(!is.na(error)) %>% 
+  pull(poem_id)
+
+poem_ids %>% 
+  filter(id_ %in% errors)
+```
+
 Tokenization
 
+``` r
+ru_poetree_tokens <- ru_poetree %>% 
+  unnest_tokens(input = poem_text, output = word, token = "words")
+```
+
 Write data
+
+``` r
+#write.csv(ru_poetree, file = "../data/large_poetree_ru_19c.csv") # full texts
+write.csv(ru_poetree_tokens, file = "../data/large_poetree_ru_19c_tokens.csv") # tokenized
+```
 
 NB: Next step: lemmatize the tokenized file with
 `00_lemmatization.ipynb` notebook!
@@ -57,13 +102,13 @@ ru_poetree <- read_csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-`..
 
     New names:
     Rows: 1124893 Columns: 12
-    ── Column specification
-    ──────────────────────────────────────────────────────── Delimiter: "," chr
+    -- Column specification
+    -------------------------------------------------------- Delimiter: "," chr
     (7): corpus, id, title, author_name, word, lemma, analysis dbl (5): ...1,
     id_poem, year_created_from, year_created_to, id_author
-    ℹ Use `spec()` to retrieve the full column specification for this data. ℹ
+    i Use `spec()` to retrieve the full column specification for this data. i
     Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    • `` -> `...1`
+    * `` -> `...1`
 
 ``` r
 glimpse(kjetsaa)
@@ -71,16 +116,48 @@ glimpse(kjetsaa)
 
     Rows: 298
     Columns: 4
-    $ id         <int> 12083, 12085, 12036, 12105, 12112, NA, 12136, 12154, 12182,…
-    $ text_final <chr> "Где наша роза, \n Друзья мои? \n Увяла роза, \n Дитя зари.…
-    $ author     <chr> "А. С. Пушкин", "А. С. Пушкин", "А. С. Пушкин", "А. С. Пушк…
-    $ header     <chr> "Роза : «Где наша роза...»", "Певец : «Слыхали ль вы за рощ…
+    $ id         <int> 12083, 12085, 12036, 12105, 12112, NA, 12136, 12154, 12182,~
+    $ text_final <chr> "\320\223\320\264\320\265 \320\275\320\260\321\210\320\260 ~
+    $ author     <chr> "\320\220. \320\241. \320\237\321\203\321\210\320\272\320\2~
+    $ header     <chr> "\320\240\320\276\320\267\320\260 : \302\253\320\223\320\26~
 
 Add author names transliteration
 
+``` r
+# load prepared poetree data if needed
+# ru_poetree <- read.csv("../data/poetree_ru_1810-1839.csv")
+
+authors_translit <- tibble(
+  author_name = unique(ru_poetree$author_name),
+  author_name_ru = c("Е. А. Баратынский", "К. Н. Батюшков", "В. Г. Бенедиктов", 
+                     "А. А. Бестужев-Марлинский", "А. А. Дельвиг", 
+                     " А. А. Фет",
+                     "Ф. Н. Глинка", "А. С. Хомяков", "Н. М. Языков", 
+                     "В. К. Кюхельбекер",  "А. В. Кольцов", "И. И. Козлов", 
+                     "М. Ю. Лермонтов", "А. И. Полежаев", "А. С. Пушкин", 
+                     "К. Ф. Рылеев", "С. П. Шевырев", "Ф. И. Тютчев", 
+                     "Д. В. Веневитинов",
+                     "П. А. Вяземский", "В. А. Жуковский"
+                     )
+)
+
+authors_translit
+```
+
 Attach transliterated names and tokenize
 
+``` r
+kjetsaa_tokens <- kjetsaa %>% 
+  rename(author_name_ru = author) %>% 
+  left_join(authors_translit, by = "author_name_ru") %>% 
+  unnest_tokens(input = text_final, output = word, token = "words")
+```
+
 Write tokenized df  –\> to be lemmatized with `00_lemmatization.ipynb`
+
+``` r
+write.csv(kjetsaa_tokens, file = "../data/kjetsaa_norm_tokens.csv")
+```
 
 ## Data overview
 
@@ -96,17 +173,17 @@ glimpse(poetree_ru)
 
     Rows: 1,124,893
     Columns: 11
-    $ corpus            <chr> "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru"…
-    $ id_poem           <int> 33734, 33734, 33734, 33734, 33734, 33734, 33734, 337…
-    $ id                <chr> "br1-105", "br1-105", "br1-105", "br1-105", "br1-105…
-    $ title             <chr> "К...", "К...", "К...", "К...", "К...", "К...", "К..…
-    $ year_created_from <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821…
-    $ year_created_to   <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821…
-    $ id_author         <int> 220, 220, 220, 220, 220, 220, 220, 220, 220, 220, 22…
-    $ author_name       <chr> "Baratynskij E.A.", "Baratynskij E.A.", "Baratynskij…
-    $ word              <chr> "приятель", "строгий", "ты", "не", "прав", "несправе…
-    $ lemma             <chr> "приятель", "строгий", "ты", "не", "правый", "неспра…
-    $ analysis          <chr> "[{'analysis': [{'lex': 'приятель', 'gr': 'S,муж,од=…
+    $ corpus            <chr> "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru"~
+    $ id_poem           <int> 33734, 33734, 33734, 33734, 33734, 33734, 33734, 337~
+    $ id                <chr> "br1-105", "br1-105", "br1-105", "br1-105", "br1-105~
+    $ title             <chr> "\320\232...", "\320\232...", "\320\232...", "\320\2~
+    $ year_created_from <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821~
+    $ year_created_to   <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821~
+    $ id_author         <int> 220, 220, 220, 220, 220, 220, 220, 220, 220, 220, 22~
+    $ author_name       <chr> "Baratynskij E.A.", "Baratynskij E.A.", "Baratynskij~
+    $ word              <chr> "\320\277\321\200\320\270\321\217\321\202\320\265\32~
+    $ lemma             <chr> "\320\277\321\200\320\270\321\217\321\202\320\265\32~
+    $ analysis          <chr> "[{'analysis': [{'lex': '\320\277\321\200\320\270\32~
 
 Number of unique words:
 
@@ -128,7 +205,7 @@ poetree_ru %>%
   mutate(perc = round(n_words / nrow(poetree_ru) * 100, 1))
 ```
 
-    # A tibble: 21 × 3
+    # A tibble: 21 x 3
        author_name      n_words  perc
        <chr>              <int> <dbl>
      1 Zhukovskij V.A.   244391  21.7
@@ -141,7 +218,7 @@ poetree_ru %>%
      8 Polezhaev A. I.    44272   3.9
      9 Baratynskij E.A.   38958   3.5
     10 Batjushkov K.N.    33389   3  
-    # ℹ 11 more rows
+    # i 11 more rows
 
 ### Kjetsaa’s norm corpus
 
@@ -171,13 +248,13 @@ kjetsaa_lemma <- read_csv("../data/kjetsaa_norm_lemma.csv")
 ```
 
     Rows: 44602 Columns: 4
-    ── Column specification ────────────────────────────────────────────────────────
+    -- Column specification --------------------------------------------------------
     Delimiter: ","
     chr (3): author_name, word, lemma
     dbl (1): id
 
-    ℹ Use `spec()` to retrieve the full column specification for this data.
-    ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+    i Use `spec()` to retrieve the full column specification for this data.
+    i Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
 # number of words
