@@ -1,4 +1,8 @@
 .DS_store
 .ipynb_checkpoints
 .Rhistory
+
+renv/library/
+renv/staging/
+
 data/large_*
