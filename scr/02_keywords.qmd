@@ -2152,9 +2152,7 @@ b_res %>%
   summarise(mean_sim = mean(cosine_sim))
 ```
 
-```{r. echo=F, include=F}
-rm(b_mat, b_groups, b_res)
-```
+`{r. echo=F, include=F} rm(b_mat, b_groups, b_res)`
 
 ### random lists
 
