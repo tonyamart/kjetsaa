@@ -1918,7 +1918,7 @@ plot_summary <- function(df_res, plot_title = "") {
 Load Kjetsaa's list as ref corpus
 
 ```{r}
-k_centroids <- read_csv("../data/centroids_kjetsaa_wordlists_kjetsaa-norm.csv")
+k_centroids <- read_csv("../data/cntrds/centroids_kjetsaa_wordlists_kjetsaa-norm.csv")
 
 glimpse(k_centroids)
 
@@ -1949,7 +1949,7 @@ range(k_res$cosine_sim, na.rm = FALSE)
 ```{r}
 plot_tiles(k_res, plot_title = "Kjetsaa's Norm as the reference corpus")
 
-ggsave("../plots/hm_kjetsaa.png",
+ggsave("../plots/cntrds/hm_kjetsaa.png",
        plot = last_plot(),
        bg = "white", dpi = 300,
        width = 15, height = 10)
@@ -1961,7 +1961,7 @@ Summary
 plot_summary(k_res, 
              plot_title = "Kjetsaa's Norm as the reference corpus")
 
-ggsave("../plots/listsim_kjetsaa.png", 
+ggsave("../plots/cntrds/listsim_kjetsaa.png", 
        plot = last_plot(), 
        bg = "white", dpi = 300,
        width = 8, height = 6)
@@ -1987,7 +1987,7 @@ k_res %>%
 ### boostr centroids
 
 ```{r}
-b_centroids <- read_csv("../data/centroids_kjetsaa_wordlists_5k.csv")
+b_centroids <- read_csv("../data/cntrds/centroids_kjetsaa_wordlists_5k.csv")
 
 glimpse(b_centroids)
 
@@ -2016,7 +2016,7 @@ range(b_res$cosine_sim, na.rm = FALSE)
 ```{r}
 plot_tiles(b_res, plot_title = "Bootstrapped 5k as the reference corpus")
 
-ggsave("../plots/hm_5k.png",
+ggsave("../plots/cntrds/hm_5k.png",
        plot = last_plot(),
        bg = "white", dpi = 300,
        width = 15, height = 10)
@@ -2026,7 +2026,7 @@ ggsave("../plots/hm_5k.png",
 plot_summary(b_res, 
              plot_title = "Bootstrapped 5k as the reference corpus")
 
-ggsave("../plots/listsim_5k.png", 
+ggsave("../plots/cntrds/listsim_5k.png", 
        plot = last_plot(), 
        bg = "white", dpi = 300,
        width = 8, height = 6)
@@ -2052,7 +2052,7 @@ b_res %>%
 ### random lists
 
 ```{r}
-r_centroids <- read_csv("../data/centroids_random_lists.csv")
+r_centroids <- read_csv("../data/cntrds/centroids_random_lists.csv")
 
 glimpse(r_centroids)
 
@@ -2064,17 +2064,17 @@ r_centroids %>%
 ```
 
 ```{r}
-# added fake measure groups
-r_centroids <- r_centroids %>% 
-  mutate(measure = "random",
-         group = ceiling(run / 25),
-         group = paste0(measure, "_", group))
-
-r_centroids %>% count(author, group, pos)
-```
-
-```{r}
 r_mat <- transform_matrix(r_centroids)
+
+# added fake measure groups
+r_mat <- r_mat %>% 
+  # group_by(author, pos) %>% 
+  mutate(group = ceiling(run / 25),
+         measure = paste0(measure, "-", group))
+
+# r_mat %>% 
+#   select(author, pos, group) %>% 
+#   count(author, pos, group)
 
 r_mat[1:5, 1:10]
 dim(r_mat)
@@ -2091,7 +2091,7 @@ range(r_res$cosine_sim, na.rm = FALSE)
 ```{r}
 plot_tiles(r_res, plot_title = "Random lists")
 
-ggsave("../plots/hm_random.png",
+ggsave("../plots/cntrds/hm_random.png",
        plot = last_plot(),
        bg = "white", dpi = 300,
        width = 15, height = 10)
@@ -2101,7 +2101,7 @@ ggsave("../plots/hm_random.png",
 plot_summary(r_res, 
              plot_title = "Random lists")
 
-ggsave("../plots/listsim_rand.png", 
+ggsave("../plots/cntrds/listsim_rand.png", 
        plot = last_plot(), 
        bg = "white", dpi = 300,
        width = 8, height = 6)
