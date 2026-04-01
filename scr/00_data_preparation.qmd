@@ -1,12 +1,12 @@
 ---
 title: "00_data_preparation"
-format: html
+format: md
 editor: visual
 ---
 
 ## Data preparation
 
-```{r}
+```{r, include=F, echo=T, warning=F, message=F}
 library(tidyverse)
 library(tidytext)
 
@@ -15,9 +15,9 @@ library(poetRee)
 
 ### PoeTree data
 
-Select authors from PoeTree (based on Kjetsaa's list (`authors.txt`)
+Select authors from PoeTree (based on Kjetsaa's list of authors + Fet A.A.)
 
-```{r}
+```{r, include=T, echo=T}
 poetree_authors <- get_authors(corpus = "ru") %>% 
   filter(str_detect(name, "Pushkin A.S.|Baratynsk|Lermontov|Zhukovsk|Vjazemsk|Tjutch|Ryleev|Batju|Koltsov|Delvig|Bestuzhev|Kjuhelb|Glinka F.N.|Jazykov|Benediktov|Kozlov I.I.|Shevyr|Polezh|Homja|Venevit|Fet")) %>% 
   select(id_, name)
@@ -27,7 +27,7 @@ poetree_authors
 
 Get texts ids using authors' ids
 
-```{r}
+```{r, include=F, echo=T}
 poem_ids <- get_poems(corpus = "ru", authors = poetree_authors$id_)
 
 glimpse(poem_ids)
@@ -35,8 +35,8 @@ glimpse(poem_ids)
 
 Get texts
 
-```{r}
-vec_ids <- poem_ids$id_
+```{r, eval = F, include=F, echo=T}
+vec_ids <- poem_ids$id_[1:3]
 
 head(vec_ids) 
 length(vec_ids) # 4842 poems
@@ -57,7 +57,7 @@ glimpse(texts)
 
 Check errors
 
-```{r}
+```{r, eval=F, include=F, echo=T}
 errors <- texts %>% 
   filter(!is.na(error)) %>% 
   pull(poem_id)
@@ -66,12 +66,12 @@ poem_ids %>%
   filter(id_ %in% errors)
 ```
 
-Remove errors from data and store full table
+```{r, eval=F, include=F, echo=F}
+# Remove errors from data
 
-```{r}
 ru_poetree <- texts %>% 
-  filter(is.na(error)) %>% # remove errors & error columns
-  select(-error, -poem_id) %>% 
+  # filter(is.na(error)) %>% # remove errors & error columns
+  # select(-error, -poem_id) %>% 
   # add text and author data
   left_join(poem_ids %>% rename(id_poem = id_), by = "id_poem") %>% 
   left_join(poetree_authors %>% rename(id_author = id_), by = "id_author") %>% 
@@ -95,17 +95,19 @@ glimpse(ru_poetree)
 
 Tokenization
 
-```{r}
+```{r, eval=F, echo=T, include=F}
 ru_poetree_tokens <- ru_poetree %>% 
   unnest_tokens(input = poem_text, output = word, token = "words")
 ```
 
 Write data
 
-```{r, eval = FALSE}
-write.csv(ru_poetree, file = "../data/poetree_ru_19c.csv") # full texts
-write.csv(ru_poetree_tokens, file = "../data/poetree_ru_19c_tokens.csv") # tokenized
+```{r, eval = FALSE, echo=T, include=F}
+#write.csv(ru_poetree, file = "../data/large_poetree_ru_19c.csv") # full texts
+write.csv(ru_poetree_tokens, file = "../data/large_poetree_ru_19c_tokens.csv") # tokenized
 ```
+
+NB: Next step: lemmatize the tokenized file with `00_lemmatization.ipynb` notebook!
 
 ### Kjetsaa's corpus
 
