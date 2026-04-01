@@ -238,7 +238,7 @@ glimpse(df)
     Rows: 1,100
     Columns: 2
     $ author <chr> "Baratynskij E.A.", "Batjushkov K.N.", "Benediktov V.G.", "Fet …
-    $ n      <int> 5554, 5319, 6069, 5560, 5380, 4992, 5932, 6127, 5430, 6702, 577…
+    $ n      <int> 5539, 5307, 6094, 5538, 5386, 4979, 5889, 6157, 5422, 6720, 568…
 
 ``` r
 plot_2a <- df %>% 
@@ -299,7 +299,7 @@ glimpse(df_2k)
     Rows: 1,100
     Columns: 2
     $ author <chr> "Baratynskij E.A.", "Batjushkov K.N.", "Benediktov V.G.", "Fet …
-    $ n      <int> 991, 1016, 1060, 993, 987, 960, 1057, 1096, 955, 1044, 1019, 10…
+    $ n      <int> 999, 1025, 1061, 953, 977, 958, 1083, 1060, 994, 1066, 1011, 99…
 
 ``` r
 plot_2b <- df_2k %>% 
@@ -365,25 +365,25 @@ Count N lemmas in Kjetsaa’s corpus
        author                    n_kjetsaa
        <chr>                         <int>
      1 Baratynskij E.A.                990
-     2 Batjushkov K.N.                 955
-     3 Benediktov V.G.                 937
-     4 Bestuzhev-Marlinskij A.A.      1027
-     5 Delvig A.A.                     830
-     6 Glinka F.N.                     919
-     7 Homjakov A.S.                   860
-     8 Jazykov N.M.                    944
+     2 Batjushkov K.N.                 965
+     3 Benediktov V.G.                 935
+     4 Bestuzhev-Marlinskij A.A.      1013
+     5 Delvig A.A.                     824
+     6 Glinka F.N.                     920
+     7 Homjakov A.S.                   855
+     8 Jazykov N.M.                    928
      9 Kjuhelbeker V.K.                911
-    10 Koltsov A. V.                   902
-    11 Kozlov I.I.                     794
+    10 Koltsov A. V.                   906
+    11 Kozlov I.I.                     784
     12 Lermontov M.Ju.                 920
-    13 Polezhaev A. I.                 888
-    14 Pushkin A.S.                    959
-    15 Ryleev K.F.                     903
-    16 Shevyrev S.P.                   916
-    17 Tjutchev F.I.                   932
-    18 Venevitinov D.V.                911
-    19 Vjazemskij P.A.                1014
-    20 Zhukovskij V.A.                 841
+    13 Polezhaev A. I.                 879
+    14 Pushkin A.S.                    962
+    15 Ryleev K.F.                     901
+    16 Shevyrev S.P.                   908
+    17 Tjutchev F.I.                   935
+    18 Venevitinov D.V.                897
+    19 Vjazemskij P.A.                1016
+    20 Zhukovskij V.A.                 836
 
 ### Fig 2-b
 

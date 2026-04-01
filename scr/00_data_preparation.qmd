@@ -113,27 +113,31 @@ NB: Next step: lemmatize the tokenized file with `00_lemmatization.ipynb` notebo
 
 Load manually prepared data
 
-```{r}
+```{r, echo=T, include=T}
 kjetsaa <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
   select(-X, -text_raw, -note)
+
+ru_poetree <- read_csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-`...1`)
 
 glimpse(kjetsaa)
 ```
 
 Add author names transliteration
 
-```{r}
+```{r, eval=F, include=F, echo=T}
 # load prepared poetree data if needed
 # ru_poetree <- read.csv("../data/poetree_ru_1810-1839.csv")
 
 authors_translit <- tibble(
   author_name = unique(ru_poetree$author_name),
   author_name_ru = c("Е. А. Баратынский", "К. Н. Батюшков", "В. Г. Бенедиктов", 
-                     "А. А. Бестужев-Марлинский", "А. А. Дельвиг", "Ф. Н. Глинка", 
-                     "А. С. Хомяков", "Н. М. Языков", "В. К. Кюхельбекер", 
-                     "А. В. Кольцов", "И. И. Козлов", "М. Ю. Лермонтов",
-                     "А. И. Полежаев", "А. С. Пушкин", "К. Ф. Рылеев",
-                     "С. П. Шевырев", "Ф. И. Тютчев", "Д. В. Веневитинов",
+                     "А. А. Бестужев-Марлинский", "А. А. Дельвиг", 
+                     " А. А. Фет",
+                     "Ф. Н. Глинка", "А. С. Хомяков", "Н. М. Языков", 
+                     "В. К. Кюхельбекер",  "А. В. Кольцов", "И. И. Козлов", 
+                     "М. Ю. Лермонтов", "А. И. Полежаев", "А. С. Пушкин", 
+                     "К. Ф. Рылеев", "С. П. Шевырев", "Ф. И. Тютчев", 
+                     "Д. В. Веневитинов",
                      "П. А. Вяземский", "В. А. Жуковский"
                      )
 )
@@ -143,16 +147,16 @@ authors_translit
 
 Attach transliterated names and tokenize
 
-```{r}
+```{r, eval=F, include=F, echo=T}
 kjetsaa_tokens <- kjetsaa %>% 
   rename(author_name_ru = author) %>% 
   left_join(authors_translit, by = "author_name_ru") %>% 
   unnest_tokens(input = text_final, output = word, token = "words")
 ```
 
-Write tokenized df
+Write tokenized df  –\> to be lemmatized with `00_lemmatization.ipynb`
 
-```{r, eval = F}
+```{r, eval = F, echo=T, include=F}
 write.csv(kjetsaa_tokens, file = "../data/kjetsaa_norm_tokens.csv")
 ```
 
@@ -162,34 +166,35 @@ Load prepared data
 
 ### poetree
 
-```{r}
-poetree_ru <- read.csv("../data/large_poetree_ru_19c_lemma.csv")
+```{r, include=T, echo=T}
+poetree_ru <- read.csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-X)
 
 glimpse(poetree_ru)
 ```
 
-Load lemmatized data for word counting
+Number of unique words:
 
-```{r}
+```{r, include=T, echo=T}
 poetree_ru %>% 
   count(lemma) %>% nrow()
 ```
 
 Proportion of words written by each author
 
-```{r}
+```{r, include=T, echo=T}
 poetree_ru %>% 
   select(author_name, lemma) %>% 
   group_by(author_name) %>% 
-  count(sort = T) %>% 
+  count(sort = T, name = "n_words") %>% 
   ungroup() %>% 
-  mutate(perc = round(n / nrow(poetree_ru) * 100, 1))
+  mutate(perc = round(n_words / nrow(poetree_ru) * 100, 1))
 ```
 
 ### Kjetsaa's norm corpus
 
-```{r}
-kjetsaa_norm <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";")
+```{r, include=T, echo=T}
+kjetsaa_norm <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
+  select(-X)
 
 # number of lines
 kjetsaa_norm %>% 
@@ -202,21 +207,13 @@ nrow(kjetsaa_norm) # number of texts
 
 Number of words & lemmas
 
-```{r}
-kjetsaa_lemma <- read.csv("../data/kjetsaa_norm_lemma.csv")
+```{r, echo=T, include=T}
+kjetsaa_lemma <- read_csv("../data/kjetsaa_norm_lemma.csv")
 
-nrow(kjetsaa_lemma)
+# number of words
+nrow(kjetsaa_lemma) 
 
+# number of lemmas
 kjetsaa_lemma %>% 
   count(lemma) %>% nrow()
-```
-
-Number of words in each text
-
-```{r}
-nwords_texts <- kjetsaa_lemma %>% 
-  group_by(header, author_name_ru) %>% 
-  count()
-
-nwords_texts
 ```
