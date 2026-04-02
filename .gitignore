@@ -6,3 +6,4 @@ renv/library/
 renv/staging/
 
 data/large_*
+.Rproj.user
