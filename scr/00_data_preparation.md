@@ -16,7 +16,7 @@ poetree_authors <- get_authors(corpus = "ru") %>%
 poetree_authors
 ```
 
-    # A tibble: 21 x 2
+    # A tibble: 21 × 2
          id_ name                     
        <int> <chr>                    
      1   366 Baratynskij E.A.         
@@ -29,7 +29,7 @@ poetree_authors
      8   201 Homjakov A.S.            
      9   284 Jazykov N.M.             
     10   268 Kjuhelbeker V.K.         
-    # i 11 more rows
+    # ℹ 11 more rows
 
 Get texts ids using authors’ ids
 
@@ -94,32 +94,22 @@ NB: Next step: lemmatize the tokenized file with
 Load manually prepared data
 
 ``` r
-kjetsaa <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
+kjetsaa <- read.delim("../data/kjetsaa_corpus/kjetsaa_norm_corpus.csv", sep = ";") %>% 
   select(-X, -text_raw, -note)
 
-ru_poetree <- read_csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-`...1`)
-```
+# load prepared data: unzip first
+# utils::unzip("../data/poetree_ru_19c_lemma.zip")
+ru_poetree <- read.csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-X)
 
-    New names:
-    Rows: 1124893 Columns: 12
-    -- Column specification
-    -------------------------------------------------------- Delimiter: "," chr
-    (7): corpus, id, title, author_name, word, lemma, analysis dbl (5): ...1,
-    id_poem, year_created_from, year_created_to, id_author
-    i Use `spec()` to retrieve the full column specification for this data. i
-    Specify the column types or set `show_col_types = FALSE` to quiet this message.
-    * `` -> `...1`
-
-``` r
 glimpse(kjetsaa)
 ```
 
     Rows: 298
     Columns: 4
-    $ id         <int> 12083, 12085, 12036, 12105, 12112, NA, 12136, 12154, 12182,~
-    $ text_final <chr> "\320\223\320\264\320\265 \320\275\320\260\321\210\320\260 ~
-    $ author     <chr> "\320\220. \320\241. \320\237\321\203\321\210\320\272\320\2~
-    $ header     <chr> "\320\240\320\276\320\267\320\260 : \302\253\320\223\320\26~
+    $ id         <int> 12083, 12085, 12036, 12105, 12112, NA, 12136, 12154, 12182,…
+    $ text_final <chr> "Где наша роза, \n Друзья мои? \n Увяла роза, \n Дитя зари.…
+    $ author     <chr> "А. С. Пушкин", "А. С. Пушкин", "А. С. Пушкин", "А. С. Пушк…
+    $ header     <chr> "Роза : «Где наша роза...»", "Певец : «Слыхали ль вы за рощ…
 
 Add author names transliteration
 
@@ -127,7 +117,7 @@ Add author names transliteration
 # load prepared poetree data if needed
 # ru_poetree <- read.csv("../data/poetree_ru_1810-1839.csv")
 
-authors_translit <- tibble(
+authors_translit <- data.frame(
   author_name = unique(ru_poetree$author_name),
   author_name_ru = c("Е. А. Баратынский", "К. Н. Батюшков", "В. Г. Бенедиктов", 
                      "А. А. Бестужев-Марлинский", "А. А. Дельвиг", 
@@ -173,17 +163,17 @@ glimpse(poetree_ru)
 
     Rows: 1,124,893
     Columns: 11
-    $ corpus            <chr> "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru"~
-    $ id_poem           <int> 33734, 33734, 33734, 33734, 33734, 33734, 33734, 337~
-    $ id                <chr> "br1-105", "br1-105", "br1-105", "br1-105", "br1-105~
-    $ title             <chr> "\320\232...", "\320\232...", "\320\232...", "\320\2~
-    $ year_created_from <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821~
-    $ year_created_to   <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821~
-    $ id_author         <int> 220, 220, 220, 220, 220, 220, 220, 220, 220, 220, 22~
-    $ author_name       <chr> "Baratynskij E.A.", "Baratynskij E.A.", "Baratynskij~
-    $ word              <chr> "\320\277\321\200\320\270\321\217\321\202\320\265\32~
-    $ lemma             <chr> "\320\277\321\200\320\270\321\217\321\202\320\265\32~
-    $ analysis          <chr> "[{'analysis': [{'lex': '\320\277\321\200\320\270\32~
+    $ corpus            <chr> "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru", "ru"…
+    $ id_poem           <int> 33734, 33734, 33734, 33734, 33734, 33734, 33734, 337…
+    $ id                <chr> "br1-105", "br1-105", "br1-105", "br1-105", "br1-105…
+    $ title             <chr> "К...", "К...", "К...", "К...", "К...", "К...", "К..…
+    $ year_created_from <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821…
+    $ year_created_to   <dbl> 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821, 1821…
+    $ id_author         <int> 220, 220, 220, 220, 220, 220, 220, 220, 220, 220, 22…
+    $ author_name       <chr> "Baratynskij E.A.", "Baratynskij E.A.", "Baratynskij…
+    $ word              <chr> "приятель", "строгий", "ты", "не", "прав", "несправе…
+    $ lemma             <chr> "приятель", "строгий", "ты", "не", "правый", "неспра…
+    $ analysis          <chr> "[{'analysis': [{'lex': 'приятель', 'gr': 'S,муж,од=…
 
 Number of unique words:
 
@@ -205,7 +195,7 @@ poetree_ru %>%
   mutate(perc = round(n_words / nrow(poetree_ru) * 100, 1))
 ```
 
-    # A tibble: 21 x 3
+    # A tibble: 21 × 3
        author_name      n_words  perc
        <chr>              <int> <dbl>
      1 Zhukovskij V.A.   244391  21.7
@@ -218,12 +208,12 @@ poetree_ru %>%
      8 Polezhaev A. I.    44272   3.9
      9 Baratynskij E.A.   38958   3.5
     10 Batjushkov K.N.    33389   3  
-    # i 11 more rows
+    # ℹ 11 more rows
 
 ### Kjetsaa’s norm corpus
 
 ``` r
-kjetsaa_norm <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
+kjetsaa_norm <- read.delim("../data/kjetsaa_corpus/kjetsaa_norm_corpus.csv", sep = ";") %>% 
   select(-X)
 
 # number of lines
@@ -244,19 +234,8 @@ nrow(kjetsaa_norm) # number of texts
 Number of words & lemmas
 
 ``` r
-kjetsaa_lemma <- read_csv("../data/kjetsaa_norm_lemma.csv")
-```
+kjetsaa_lemma <- read.csv("../data/kjetsaa_corpus/kjetsaa_norm_lemma.csv")
 
-    Rows: 44602 Columns: 4
-    -- Column specification --------------------------------------------------------
-    Delimiter: ","
-    chr (3): author_name, word, lemma
-    dbl (1): id
-
-    i Use `spec()` to retrieve the full column specification for this data.
-    i Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
 # number of words
 nrow(kjetsaa_lemma) 
 ```

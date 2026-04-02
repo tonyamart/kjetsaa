@@ -7,7 +7,10 @@ editor: visual
 ## Data preparation
 
 ```{r, include=F, echo=T, warning=F, message=F}
-library(tidyverse)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(utils)
 library(tidytext)
 
 library(poetRee)
@@ -114,10 +117,12 @@ NB: Next step: lemmatize the tokenized file with `00_lemmatization.ipynb` notebo
 Load manually prepared data
 
 ```{r, echo=T, include=T}
-kjetsaa <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
+kjetsaa <- read.delim("../data/kjetsaa_corpus/kjetsaa_norm_corpus.csv", sep = ";") %>% 
   select(-X, -text_raw, -note)
 
-ru_poetree <- read_csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-`...1`)
+# load prepared data: unzip first
+utils::unzip("../data/poetree_ru_19c_lemma.zip")
+ru_poetree <- read.csv("../data/large_poetree_ru_19c_lemma.csv") %>% select(-X)
 
 glimpse(kjetsaa)
 ```
@@ -128,7 +133,7 @@ Add author names transliteration
 # load prepared poetree data if needed
 # ru_poetree <- read.csv("../data/poetree_ru_1810-1839.csv")
 
-authors_translit <- tibble(
+authors_translit <- data.frame(
   author_name = unique(ru_poetree$author_name),
   author_name_ru = c("Е. А. Баратынский", "К. Н. Батюшков", "В. Г. Бенедиктов", 
                      "А. А. Бестужев-Марлинский", "А. А. Дельвиг", 
@@ -193,7 +198,7 @@ poetree_ru %>%
 ### Kjetsaa's norm corpus
 
 ```{r, include=T, echo=T}
-kjetsaa_norm <- read.delim("../data/kjetsaa_norm_corpus.csv", sep = ";") %>% 
+kjetsaa_norm <- read.delim("../data/kjetsaa_corpus/kjetsaa_norm_corpus.csv", sep = ";") %>% 
   select(-X)
 
 # number of lines
@@ -208,7 +213,7 @@ nrow(kjetsaa_norm) # number of texts
 Number of words & lemmas
 
 ```{r, echo=T, include=T}
-kjetsaa_lemma <- read_csv("../data/kjetsaa_norm_lemma.csv")
+kjetsaa_lemma <- read.csv("../data/kjetsaa_corpus/kjetsaa_norm_lemma.csv")
 
 # number of words
 nrow(kjetsaa_lemma) 

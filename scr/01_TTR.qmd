@@ -10,10 +10,12 @@ editor: visual
 
 This notebook replicates Kjetsaa's plot on TTR in poetic corpora.
 
-```{r, messa=FALSE, warning=FALSE}
-library(tidyverse)
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
 library(tidytext)
 
+library(ggplot2)
 library(MetBrewer)
 library(cowplot)
 # libs to attach jpeg to plots
@@ -513,7 +515,7 @@ TTR in Kjetsaa's norm: read lemmatized corpus, calculate N tokens per author
 
 ```{r, include=F, echo=F}
 # read the file with Kjetsaa's corpus lemmatized:
-norm <- read.csv("../data/kjetsaa_norm_lemma.csv")
+norm <- read.csv("../data/kjetsaa_corpus/kjetsaa_norm_lemma.csv")
 
 glimpse(norm)
 ```

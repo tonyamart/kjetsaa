@@ -8,46 +8,17 @@
 This notebook replicates Kjetsaa’s plot on TTR in poetic corpora.
 
 ``` r
-library(tidyverse)
-```
-
-    ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ✔ dplyr     1.1.4     ✔ readr     2.1.6
-    ✔ forcats   1.0.1     ✔ stringr   1.6.0
-    ✔ ggplot2   4.0.1     ✔ tibble    3.3.1
-    ✔ lubridate 1.9.4     ✔ tidyr     1.3.2
-    ✔ purrr     1.2.1     
-    ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ✖ dplyr::filter() masks stats::filter()
-    ✖ dplyr::lag()    masks stats::lag()
-    ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
-
-``` r
+library(dplyr)
+library(tidyr)
 library(tidytext)
 
+library(ggplot2)
 library(MetBrewer)
 library(cowplot)
-```
-
-
-    Attaching package: 'cowplot'
-
-    The following object is masked from 'package:lubridate':
-
-        stamp
-
-``` r
 # libs to attach jpeg to plots
 library(jpeg)
 library(magick)
-```
 
-    Linking to ImageMagick 6.9.12.98
-    Enabled features: fontconfig, freetype, fftw, heic, lcms, pango, raw, webp, x11
-    Disabled features: cairo, ghostscript, rsvg
-    Using 6 threads
-
-``` r
 theme_set(theme_minimal())
 ```
 
@@ -238,7 +209,7 @@ glimpse(df)
     Rows: 1,100
     Columns: 2
     $ author <chr> "Baratynskij E.A.", "Batjushkov K.N.", "Benediktov V.G.", "Fet …
-    $ n      <int> 5539, 5307, 6094, 5538, 5386, 4979, 5889, 6157, 5422, 6720, 568…
+    $ n      <int> 5472, 5304, 6121, 5606, 5435, 5023, 5974, 6099, 5433, 6708, 570…
 
 ``` r
 plot_2a <- df %>% 
@@ -299,7 +270,7 @@ glimpse(df_2k)
     Rows: 1,100
     Columns: 2
     $ author <chr> "Baratynskij E.A.", "Batjushkov K.N.", "Benediktov V.G.", "Fet …
-    $ n      <int> 999, 1025, 1061, 953, 977, 958, 1083, 1060, 994, 1066, 1011, 99…
+    $ n      <int> 1015, 1031, 1062, 998, 990, 956, 1086, 1085, 984, 1037, 1040, 1…
 
 ``` r
 plot_2b <- df_2k %>% 
@@ -364,26 +335,26 @@ Count N lemmas in Kjetsaa’s corpus
     # A tibble: 20 × 2
        author                    n_kjetsaa
        <chr>                         <int>
-     1 Baratynskij E.A.                990
-     2 Batjushkov K.N.                 965
-     3 Benediktov V.G.                 935
-     4 Bestuzhev-Marlinskij A.A.      1013
-     5 Delvig A.A.                     824
-     6 Glinka F.N.                     920
-     7 Homjakov A.S.                   855
-     8 Jazykov N.M.                    928
-     9 Kjuhelbeker V.K.                911
-    10 Koltsov A. V.                   906
-    11 Kozlov I.I.                     784
+     1 Baratynskij E.A.                991
+     2 Batjushkov K.N.                 948
+     3 Benediktov V.G.                 933
+     4 Bestuzhev-Marlinskij A.A.      1019
+     5 Delvig A.A.                     823
+     6 Glinka F.N.                     913
+     7 Homjakov A.S.                   858
+     8 Jazykov N.M.                    929
+     9 Kjuhelbeker V.K.                915
+    10 Koltsov A. V.                   904
+    11 Kozlov I.I.                     782
     12 Lermontov M.Ju.                 920
-    13 Polezhaev A. I.                 879
-    14 Pushkin A.S.                    962
-    15 Ryleev K.F.                     901
-    16 Shevyrev S.P.                   908
-    17 Tjutchev F.I.                   935
-    18 Venevitinov D.V.                897
-    19 Vjazemskij P.A.                1016
-    20 Zhukovskij V.A.                 836
+    13 Polezhaev A. I.                 869
+    14 Pushkin A.S.                    994
+    15 Ryleev K.F.                     902
+    16 Shevyrev S.P.                   911
+    17 Tjutchev F.I.                   916
+    18 Venevitinov D.V.                908
+    19 Vjazemskij P.A.                1027
+    20 Zhukovskij V.A.                 844
 
 ### Fig 2-b
 

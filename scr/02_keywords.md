@@ -502,6 +502,7 @@ head(lerm_lr_int)
 ```
 
 ``` r
+# NB zeta_tests/ folder should exist!
 lerm_zr <- zeta_count(AUTHOR = "Lermontov M.Ju.",
                       N_POEMS = 270,
                       SAMPLE_SIZE = 43000,
@@ -861,7 +862,7 @@ fet_wl$word_list[5]
 Read saved results from .rds file and make the plot
 
 ``` r
-global_res <- readRDS("../data/keywords_res_kjetsaa_norm.rds")
+global_res <- readRDS("../data/results/keywords_res_kjetsaa_norm.rds")
 
 # Lermontov results
 lerm <- global_res %>% filter(author == "Lermontov M.Ju.")
@@ -1092,7 +1093,7 @@ fet_zr_int <- calculate_intersection(author_lists = fet_lists,
 
 ``` r
 # Read stored results and create plots
-global_res <- readRDS("../data/keywords_res_5k_norm.rds")
+global_res <- readRDS("../data/results/keywords_res_5k_norm.rds")
 
 # Lermontov results
 lerm <- global_res %>% filter(author == "Lermontov M.Ju.")

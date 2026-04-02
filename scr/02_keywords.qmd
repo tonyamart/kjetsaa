@@ -10,11 +10,17 @@ output-encoding: UTF-8
 ## Load data & pckg
 
 ```{r,  echo=F, message=F, warning=F}
-library(tidyverse)
+library(dplyr)
+library(stringr)
+library(tibble)
+library(readr)
+library(purrr)
 library(tidytext)
+library(tidyr)
 library(tidylo)
 library(stylo)
 
+library(ggplot2)
 library(MetBrewer)
 library(cowplot)
 theme_set(theme_minimal())
@@ -38,7 +44,7 @@ Load Kjetsaa's norm corpus replication:
 
 ```{r, include=T, echo=F}
 # Kjetsaa's norm corpus replication (full metadata + lemmas)
-norm <- read.csv("../data/large_kjetsaa_norm.csv")
+norm <- read.csv("../data/kjetsaa_corpus/kjetsaa_norm_tokenized.csv")
 
 # create pos column
 norm <- norm %>% 
@@ -540,7 +546,8 @@ lerm_lr_int <- calculate_intersection(author_lists = lerm_lists,
 head(lerm_lr_int)
 ```
 
-```{r,  echo=T, message=F, warning=F, fig.keep='none', eval=F}
+```{r, echo=T, message=F, warning=F, fig.keep='none', eval=F}
+# NB zeta_tests/ folder should exist!
 lerm_zr <- zeta_count(AUTHOR = "Lermontov M.Ju.",
                       N_POEMS = 270,
                       SAMPLE_SIZE = 43000,
@@ -999,7 +1006,7 @@ x <- fet_gr_int %>%
 
 global_res <- rbind(global_res, x)
 
-saveRDS(global_res, file = "../data/keywords_res_kjetsaa_norm.rds")
+# saveRDS(global_res, file = "../data/results/keywords_res_kjetsaa_norm.rds")
 ```
 
 ```{r,  echo=F, eval=F}
@@ -1026,7 +1033,7 @@ sample_n(global_wl, 5)
 Read saved results from .rds file and make the plot
 
 ```{r, echo=T, include=T}
-global_res <- readRDS("../data/keywords_res_kjetsaa_norm.rds")
+global_res <- readRDS("../data/results/keywords_res_kjetsaa_norm.rds")
 
 # Lermontov results
 lerm <- global_res %>% filter(author == "Lermontov M.Ju.")
@@ -1174,7 +1181,7 @@ random_lists %>%
 ```{r, echo=F, eval=F}
 # KEYWORDS ANALYSIS
 
-res_k <- readRDS("../data/keywords_res_kjetsaa_norm.rds")
+res_k <- readRDS("../data/results/keywords_res_kjetsaa_norm.rds")
 
 glimpse(res_k)
 ```
@@ -1721,7 +1728,7 @@ x <- fet_gr_int %>%
 
 global_res <- rbind(global_res, x)
 
-saveRDS(global_res, file = "../data/keywords_res_5k_norm.rds")
+# saveRDS(global_res, file = "../data/results/keywords_res_5k_norm.rds")
 ```
 
 ```{r,  echo=F, eval=F}
@@ -1747,7 +1754,7 @@ sample_n(global_wl, 5)
 
 ```{r, echo=T, include=T}
 # Read stored results and create plots
-global_res <- readRDS("../data/keywords_res_5k_norm.rds")
+global_res <- readRDS("../data/results/keywords_res_5k_norm.rds")
 
 # Lermontov results
 lerm <- global_res %>% filter(author == "Lermontov M.Ju.")
